@@ -4,24 +4,14 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-060 through T-062 done. T-063 in progress, T-064 open next.
+T-060 through T-063 done. T-064 open next.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-063: lab report upload. Add a third `UploadCard` kind ("labs") in
-`src/app/(patient)/upload/upload-card.tsx`: field name `doc`, `accept="image/*,application/pdf"`,
-no `capture` attribute, posts to `/api/ingest/labs` (already built by core, returns
-`{labReport, observations, extraction, flags}`). Add a `LabsResult` type + `ResultPreview` branch
-using `metricLabel()`. Add the card to `upload/page.tsx`'s grid. No timeline change needed
-(`timeline-data.ts` already renders `lab_reports`). Smoke-test then revert per T-061/T-062
-convention.
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-063: lab report upload (depends on T-061) — reuse `UploadCard` pattern in
-  `src/app/(patient)/upload/upload-card.tsx`, posting to `/api/ingest/labs` (multipart
-  pdf/img, already built by core). Probably needs a third card variant since labs accept
-  PDF as well as photo (`accept="image/*,application/pdf"`, no `capture` attribute).
 - T-064: weekly sleep check-in, fixed form, no Gemini. No API route exists for this
   (not listed in ARCHITECTURE.md) — write it as a server action in this lane's folder
   (same pattern `home/page.tsx` already uses: import `getDb`/`engine-db` directly)
@@ -29,6 +19,18 @@ convention.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- T-063: `UploadCard` (`upload-card.tsx`) now takes `kind: "meal" | "device" | "labs"`. The
+  per-kind `COPY` map carries the multipart field name (`photo` for meal/device, `doc` for
+  labs — matches `/api/ingest/labs`'s `readUploadedFile(formData, "doc")`), the `accept` string,
+  and whether to set `capture="environment"` (false for labs, since a lab report is usually a
+  PDF or a screenshot, not a live camera shot). The preview area now branches on
+  `file.type.startsWith("image/")`: a PDF shows a filename chip (`FileText` icon) instead of
+  trying to render it as an `<img>`. Labs reuses `DeviceResult`-shaped `{observations, extraction}`
+  (same `metricLabel()` preview), not the full `labReport.extracted`. Smoke-tested end to end
+  (synthetic lab image generated with PIL: HbA1c/fasting glucose/creatinine, run through the
+  real route and Gemini) against the shared Tiger Cloud DB on Patient A, then deleted the
+  exact `lab_reports`/`observations` rows it created and re-ran `runEngineForPatient` — same
+  revert convention as T-061/T-062.
 - T-062: `src/app/(patient)/symptoms/` (page + `symptom-chat.tsx`) posts JSON `{patientId, text}`
   to `/api/ingest/symptom` (unlike the multipart `/api/ingest/{meal,device}` routes T-061 used).
   The route's response already carries the final `redFlag` boolean and fixed `message` string
