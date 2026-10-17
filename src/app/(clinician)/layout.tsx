@@ -13,11 +13,17 @@ export default function ClinicianLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
+        <div
+          className="h-1 w-full"
+          style={{ background: "linear-gradient(90deg, oklch(0.35 0.08 290), oklch(0.6 0.16 45), oklch(0.78 0.16 55))" }}
+        />
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center justify-between gap-4 sm:justify-start sm:gap-8">
             <Link href="/queue" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-primary">
               <Gauge className="size-5" />
-              Ripple
+              <span className="bg-gradient-to-r from-primary to-[oklch(0.6_0.16_45)] bg-clip-text text-transparent">
+                Ripple
+              </span>
             </Link>
             <nav className="flex items-center gap-1 text-sm">
               {NAV.map((item) =>
