@@ -8,12 +8,18 @@ T-042 through T-047 done.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-048: `/benchmark` ("Synthetic scale test") page.
+- Flip the `(clinician)/layout.tsx` nav item from greyed to `ready: true`.
+- New `/benchmark` route: a client "Run" button (same on-demand pattern as `visit-summary.tsx`)
+  posting to the existing `POST /api/benchmark/run` (T-010) — no auto-run on page load.
+- Stat tiles (patients, rows scanned, silent patients found, flags written) + a single-hue
+  horizontal bar chart of median ms for the 3 `paths` (continuous aggregate / raw table / fetch+
+  compute in TS) — the Tiger Data story T-083 needs. Run timestamp shown once a result lands.
+- Verify lint/tsc/test + a live screenshot of a real run against the Tiger Cloud seed.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-048: `/benchmark` page — nav item already reserved and greyed "coming soon" (T-040), reads
-  `POST /api/benchmark/run` (T-010).
+- Clinician lane's open tasks are done after T-048. Check TASKS.md for what's next across lanes.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
