@@ -4,13 +4,19 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-001 to T-005, T-007 to T-012 done and pushed; only T-006 (deploy, on hold — human is
-reevaluating Vultr), T-013 and T-014 (both Vultr-dependent, see below) are left in this lane.
-Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit`
-1.26.0). The DB is SEEDED: 25 patients, flags table is populated by running `/api/engine/run`
-(empty right after a reseed — that's expected, see seed Gotcha below). SQL slopes per year match
-the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT
-+6.1 and GGT +9.4.
+T-001 to T-012 done and pushed; T-013, T-014 (Vultr-dependent) and new T-015 (GoDaddy domain +
+HTTPS) are left in this lane. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb`
+2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by
+running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below).
+SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP
+141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
+
+**T-006 done (2026-10-17): the app is live at http://155.138.148.86** (plain HTTP, no domain —
+that's the new T-015). Vultr instance in Toronto, Ubuntu 24.04, Docker 29.9.1, container
+`undertow` on port 80, `restart unless-stopped`. Connects to the same shared Tiger Cloud DB
+everyone else uses — confirmed live (`/api/clinician/patients` returns Walter Hughes urgent as
+expected). See Gotchas for the full how-to (SSH key gotcha, Dockerfile, build-time bugs found
+and fixed, uploads bind-mount, redeploy steps) before touching this again.
 
 T-012 done (2026-10-17): `/api/benchmark/run`'s 3 vitals-OLS paths now each run as one batched
 query instead of 150 (one per patient×metric pair). Live-verified against Tiger Cloud: all three
@@ -24,30 +30,80 @@ T-010 built `POST /api/benchmark/run`: three vitals-OLS paths (continuous aggreg
 T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + engine + Gemini), skipping the stub phase since the engine/db wiring was already straightforward: `src/app/api/_lib/{http,engine-db,gemini,uploads}.ts` are the shared glue, one `route.ts` per endpoint. Smoke-tested live against Tiger Cloud + real Gemini (see Gotchas) — queue ranking, validate/dismiss/message, and the symptom red-flag path all confirmed working before committing.
 
 ## In flight
-T-006: Vultr reevaluation is resolved — account made, billing added, instance up in Toronto
-(155.138.148.86, Ubuntu 24.04, SSH as root with an ed25519 key, confirmed reachable after two
-reinstalls to get the key attached — Vultr's SSH-key picker only applies at deploy/reinstall
-time, not retroactively to a running instance, see Gotchas). Scope for this pass: deploy only
-(Docker container running on the box, reachable over plain HTTP at the IP) — domain
-registration and HTTPS are still deliberately out, per the earlier human decision to split them
-off as separate, confirm-first steps. Plan: add `output: "standalone"` to `next.config.ts`,
-write a multi-stage Dockerfile + `.dockerignore`, install Docker on the server, ship the repo
-+ `.env.local` secrets over (rsync/scp, not git, no GitHub credentials on the box), build and
-run the container, decide `UPLOAD_DIR` persistence (bind-mount vs ephemeral) before finishing.
+(none)
 
 ## Next up
-- **T-013, T-014 stay on hold** until T-006 (this pass) is actually done and verified reachable.
-- **T-013** (new 2026-10-17, core, depends on T-006): nightly scheduled job on the Vultr server
+- **T-015** (new 2026-10-17, core, depends on T-006): register the GoDaddy domain and point it
+  at 155.138.148.86, then get HTTPS working (e.g. Caddy or nginx + Let's Encrypt in front of the
+  container on port 80/443, container moves to an internal port). Still deliberately not done —
+  domain registration is a paid, semi-public action, confirm with the human before registering
+  anything.
+- **T-013** (core, depends on T-006, now satisfied): nightly scheduled job on the Vultr server
   that re-runs `/api/engine/run` for every patient. Required, not optional — silence detection
   and trend/projection aging are both functions of wall-clock time, not of any ingest event, so
   without this job a patient who stops logging or whose projected crossing date creeps closer
-  gets no fresh flag between demos.
-- **T-014** (new 2026-10-17, core, optional): move `UPLOAD_DIR` to Vultr Object Storage if a
-  Canadian region is available there, so uploads survive a container restart.
+  gets no fresh flag between demos. The box is up now, so this is unblocked — a cron entry or
+  systemd timer on 155.138.148.86 calling `curl -X POST localhost/api/engine/run` is the simplest
+  version.
+- **T-014** (core, optional): move `UPLOAD_DIR` to Vultr Object Storage if a Canadian region is
+  available there. Lower priority now that uploads already survive a container restart via the
+  bind-mount (see Gotchas) — only worth doing if the MLH Vultr prize write-up wants the extra
+  Vultr surface area, not because the demo needs it.
 - Optional hardening: get Tiger's CA and move to `sslmode=verify-full` (DECISIONS 03:40).
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **Vultr deploy (T-006)**
+  - Server: 155.138.148.86, Vultr, Toronto region, Ubuntu 24.04, SSH as `root` with the human's
+    `~/.ssh/id_ed25519` (comment "htv-11"). **Vultr's SSH-key picker only takes effect at
+    deploy/reinstall time, not retroactively on a running instance** — adding a key to the Vultr
+    *account* after the instance already exists does nothing to that instance; it took two
+    "Reinstall" cycles from the dashboard (each one changes the SSH host key — expected, not a
+    MITM, just `ssh-keygen -R 155.138.148.86` and reconnect) before the key picker actually took.
+    If SSH ever stops working after a dashboard action, suspect this first before assuming the
+    key or network broke.
+  - Docker 29.9.1 installed via `curl -fsSL https://get.docker.com | sh` (official convenience
+    script, Ubuntu 24.04 supported). `ufw` was active with only port 22 open by default — opened
+    80 with `ufw allow 80/tcp` (not 443 yet, no HTTPS/reverse proxy in front yet, see T-015).
+  - Deploy is rsync + scp, not git: `/opt/undertow` on the server is an `rsync -az --delete`
+    mirror of the repo (excludes `node_modules .next .git uploads .env*`), and `.env.local` is
+    `scp`'d separately straight to `/opt/undertow/.env.local` (`chmod 600`) so secrets never pass
+    through a shell command's stdout/argv and the repo's `.gitignore`d `.env.local` never needs
+    to exist in git or be read/printed anywhere (CLAUDE.md §2 "never commit secrets"). No GitHub
+    deploy key or PAT needed on the box this way. Redeploy = rerun both, `docker build` again,
+    `docker stop undertow && docker rm undertow` then the `docker run` below again.
+  - `next.config.ts` now has `output: "standalone"` so the image only needs
+    `.next/standalone` + `.next/static` + `public/`, not `node_modules` — `Dockerfile` is a
+    3-stage build (deps → builder → runner), `node:24-alpine` (matches `@types/node@^24`; no
+    native deps in `pg`/`pg-copy-streams`, so alpine's musl libc is fine), runs as a non-root
+    `nextjs` user (uid/gid 1001).
+  - **`npm run build` had never actually been run for the patient lane before this** (T-060 to
+    T-064 were all verified in dev mode + `npm test`, neither of which exercises prerendering).
+    It failed on `/sleep`, `/symptoms`, `/upload` — each read `searchParams` (and `/sleep` also a
+    DB row) directly in an async server component outside `<Suspense>`, which Next 16's Cache
+    Components/PPR rejects at build time, not a type or lint error. Fixed with the same
+    `connection()`-gated, Suspense-wrapped content-component split `home/page.tsx` already used;
+    purely structural, confirmed no behavior change in dev mode after. See DECISIONS.md. **Run
+    `npm run build` at least once before trusting any new page is deploy-ready** — `tsc`/lint/
+    `npm test` do not catch this class of bug.
+  - `docker run -d --name undertow --restart unless-stopped -p 80:3000 --env-file
+    /opt/undertow/.env.local -e UPLOAD_DIR=/app/uploads -v /opt/undertow-uploads:/app/uploads
+    undertow:latest`. `UPLOAD_DIR` is overridden at `docker run` time (not whatever
+    `.env.local` says) to a fixed in-container path that matches the bind mount, so the exact
+    value in the human's local `.env.local` doesn't matter here. **The bind-mount host directory
+    must be `chown`'d to `1001:1001`** (the container's `nextjs` user) or the container gets
+    `Permission denied` writing uploads — default root ownership from `mkdir` is not enough;
+    verified with `docker exec undertow sh -c "touch /app/uploads/.write-test"` after the chown.
+    This resolves the old "decide before deploy whether uploads survive a restart" open question:
+    they do now, via this bind mount, not ephemeral.
+  - Connects to the same shared Tiger Cloud `DATABASE_URL` everyone else uses (copied from the
+    human's own working `.env.local`, so the `uselibpqcompat=true` / `sslmode=require` Gotcha
+    below already applies) — this is not a separate production database, so reseeding or
+    `db:migrate` from anywhere still affects what the live deploy shows. Live-verified reachable
+    and correct: `curl http://155.138.148.86/api/clinician/patients` returns Walter Hughes as
+    `urgent`, matching the known seed story.
+  - Not done on purpose, left for T-015: no domain, no HTTPS (plain `http://155.138.148.86`),
+    no reverse proxy. Also not done: T-013's nightly cron (now unblocked, was waiting on this).
 - **Benchmark batching (T-012, `src/db/vitals.ts`, `src/app/api/benchmark/run/route.ts`)**
   - New `olsFitBatchSql`/`olsFitRawBatchSql` do the same `rollup(stats)`/`stats_agg` math as
     `olsFitSql`/`olsFitRawSql` but take `patientIds`/`metrics` arrays and `GROUP BY patient_id,
