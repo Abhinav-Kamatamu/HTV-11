@@ -20,7 +20,12 @@ export type Contribution = {
   sourceIds: SourceId[];
   /** The patient stopped logging, so this daily-series signal is older than it looks (RISK_ENGINE §6, gap layer). */
   stale?: true;
+  /** A single abnormal result awaiting a repeat (DECISIONS 2026-10-17): floors the flag at monitor. */
+  unconfirmed?: true;
 };
+
+/** Shown next to a flag whose only abnormal values are single, unrepeated results. */
+export const UNCONFIRMED_LABEL = "unconfirmed, repeat test suggested";
 
 export const POINTS = {
   threshold: { monitorRange: 2, diagnosticRange: 4 },
@@ -36,8 +41,6 @@ export const POINTS = {
     crossingWithinHorizon: 2,
     /** Moving toward the threshold with no crossing in the horizon. */
     towardNoCrossing: 1,
-    /** Extra for eGFR falling faster than 5 mL/min/1.73m²/yr (KDIGO 2012). */
-    rapidEgfrDecline: 1,
   },
   changepoint: { adverse: 1, agreesWithTrend: 2 },
   /** Metabolic syndrome by number of criteria met. */

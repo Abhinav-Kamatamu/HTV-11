@@ -204,7 +204,10 @@ Rules:
   sets at least `review`. **Two or more conditions** in a diagnostic range set `urgent` on those flags.
   Diagnostic means sustained: HbA1c ≥ 6.5 or fasting glucose ≥ 7.0 (t2d); eGFR < 60 or ACR ≥ 3 on the latest
   two results at least 90 days apart (ckd, KDIGO chronicity); home BP average ≥ 130/80 over ≥ 7 days (htn).
-  A single result in range is the **monitor range** (threshold layer +2) until it is confirmed. Metabolic
+  A single result in range is the **monitor range** (threshold layer +2) until it is confirmed, and it floors
+  the flag at `monitor` with the label "unconfirmed, repeat test suggested" (single eGFR < 60, ACR ≥ 3,
+  HbA1c 5.5 to 6.4, fasting glucose 5.6 to 6.9). A significant eGFR decline faster than 5 mL/min/1.73m²/yr
+  (KDIGO 2012 rapid progression) floors the CKD flag at `review`; it earns no points. Metabolic
   syndrome, STOP-Bang, CANRISK, FIB-4 and FLI are screens, never diagnostic, so they never set a floor.
   A gap-only (`engagement`) flag is `monitor`.
 - **Red-flag symptoms** (§5) keep their bypass: the patient is `urgent` immediately and the clinician is
@@ -217,7 +220,6 @@ Starting point values (all in `points.ts`):
 | threshold | value in guideline monitor range / in diagnostic range | 2 / 4 |
 | score | CANRISK high / very high; FIB-4 intermediate / high; FLI ≥ 60 | 2 / 3; 1 / 4; 2 |
 | trend | gate passes and crossing ≤ 1 yr / 1 to 3 yr / moving toward threshold, no crossing in horizon | 4 / 2 / 1 |
-| trend (eGFR) | falling faster than 5 mL/min/1.73m²/yr (KDIGO 2012), added to the row above | +1 |
 | changepoint | adverse shift / adverse shift agreeing with an open trend on the same condition | 1 / 2 |
 | symptom | decayed cluster score, rounded to 0.5 | up to 3 |
 | cooccurrence | metabolic syndrome with 3 / 4 / 5 criteria met | 3 / 4 / 4 |
@@ -226,8 +228,13 @@ Starting point values (all in `points.ts`):
 
 Implementation notes (T-031, `src/engine/points.ts` and `evaluate.ts`):
 - **Monitor range** (threshold +2) is the guideline at-risk band: HbA1c 5.5 to 6.4, fasting glucose 5.6 to 6.9, a
-  single eGFR < 60 or ACR ≥ 3. Home BP has no monitor range, only the sustained average. On its own +2 is under
-  the monitor band, so a lone at-risk value or an unconfirmed result raises no flag until another layer joins it.
+  single eGFR < 60 or ACR ≥ 3. Home BP has no monitor range, only the sustained average. Those rows carry
+  `unconfirmed: true`, and the ledger's `label` is "unconfirmed, repeat test suggested" unless the ledger is
+  diagnostic. +2 alone is under the monitor band, so the floor (`basis: "unconfirmed_floor"`) is what raises the flag.
+- **Floors** (`applyFloors`): diagnostic or rapid eGFR decline = at least review, unconfirmed = at least monitor,
+  then two or more diagnostic conditions = urgent. The rapid-decline row is a 0-point trend row (it exists even
+  when eGFR is already below 60 and so has no trend row) and is not a diagnostic range, so it never counts
+  toward the "two diagnostic conditions" rule.
 - **Trends** only count while the latest value is still on the near side of the line (an HbA1c already ≥ 6.0 or an
   ACR already ≥ 3 gets the threshold row instead) and never target the 6.5% diabetes line.
 - **Supporting layers** (changepoint, sleep) count only when the condition already has a primary contribution

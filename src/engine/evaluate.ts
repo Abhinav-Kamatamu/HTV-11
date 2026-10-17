@@ -3,7 +3,7 @@ import { evaluateMets, type MetsResult } from "./cooccurrence";
 import { isRapidEgfrDecline, labCrossing, labTrend } from "./labtrend";
 import {
   applyLayerCap, daysBetween, duration, hasPrimary, isoTs, maxSeverity, monthDay, num, plural, POINTS, severityFromPoints,
-  totalPoints, withUnit, type Contribution, type EvidencePoint, type Severity,
+  severityRank, totalPoints, UNCONFIRMED_LABEL, withUnit, type Contribution, type EvidencePoint, type Severity,
 } from "./points";
 import type { PatientRecord } from "./record";
 import { bmi, canriskBand, fib4, fib4Band, fli, fliBand, homeBpAverage, homeBpHigh, pairBp, type BpAverage } from "./scores";
@@ -20,6 +20,8 @@ import { DAY_MS, DAYS_PER_YEAR, type Condition, type Pt } from "./types";
 export type SeverityBasis =
   | "points" // the bands alone
   | "diagnostic_floor" // a sustained diagnostic range sets at least review
+  | "rapid_decline_floor" // eGFR falling faster than 5/yr (KDIGO 2012) sets at least review
+  | "unconfirmed_floor" // a single abnormal result sets at least monitor, label "unconfirmed, repeat test suggested"
   | "multiple_diagnostic" // two or more conditions in a diagnostic range set urgent
   | "osa_screen" // STOP-Bang high fires monitor regardless of points
   | "gap_only"; // an engagement flag is monitor
@@ -34,6 +36,8 @@ export type ConditionLedger = {
   basis: SeverityBasis;
   /** A sustained value in a guideline diagnostic range (t2d, ckd, htn only). Screens are never diagnostic. */
   diagnostic: boolean;
+  /** UNCONFIRMED_LABEL when the abnormal values are single results awaiting a repeat and nothing is diagnostic. */
+  label: string | null;
 };
 
 export type Evaluation = {
@@ -135,15 +139,16 @@ function t2dThreshold(ctx: Ctx): { contributions: Contribution[]; diagnostic: bo
     if (!p || p.value < r.monitorFrom) continue;
     const isDiagnostic = p.value >= r.diagnosticFrom;
     diagnostic ||= isDiagnostic;
-    contributions.push(contribution(
+    const row = contribution(
       "threshold",
       isDiagnostic ? POINTS.threshold.diagnosticRange : POINTS.threshold.monitorRange,
       isDiagnostic
         ? `${r.label} ${withUnit(num(p.value, 2), r.unit)} on ${monthDay(p.ts)} is in the diabetes range (${r.diagnosticFrom} or above).`
-        : `${r.label} ${withUnit(num(p.value, 2), r.unit)} on ${monthDay(p.ts)} is in the at-risk range (${r.monitorFrom} to below ${r.diagnosticFrom}).`,
+        : `${r.label} ${withUnit(num(p.value, 2), r.unit)} on ${monthDay(p.ts)} is in the at-risk range (${r.monitorFrom} to below ${r.diagnosticFrom}); ${UNCONFIRMED_LABEL}.`,
       [ev(r.metric, p)],
       [r.source],
-    ));
+    );
+    contributions.push(isDiagnostic ? row : { ...row, unconfirmed: true });
   }
   return { contributions, diagnostic };
 }
@@ -167,15 +172,16 @@ function ckdThreshold(ctx: Ctx): { contributions: Contribution[]; diagnostic: bo
     const earlier = latest(pts.filter((p) => p.ts <= last.ts - chronicityMs));
     const sustained = earlier !== null && c.inRange(earlier.value);
     diagnostic ||= sustained;
-    contributions.push(contribution(
+    const row = contribution(
       "threshold",
       sustained ? POINTS.threshold.diagnosticRange : POINTS.threshold.monitorRange,
       sustained
         ? `${c.label} ${num(earlier.value)} on ${monthDay(earlier.ts)} and ${num(last.value)} on ${monthDay(last.ts)} are both ${c.rule} ${c.unit}, more than 3 months apart (CKD range).`
-        : `${c.label} ${num(last.value)} ${c.unit} on ${monthDay(last.ts)} is ${c.rule}; a repeat at least 3 months after the first result would confirm CKD.`,
+        : `${c.label} ${num(last.value)} ${c.unit} on ${monthDay(last.ts)} is ${c.rule}; ${UNCONFIRMED_LABEL} (a repeat at least 3 months later would confirm CKD).`,
       sustained ? [ev(c.metric, earlier), ev(c.metric, last)] : [ev(c.metric, last)],
       [THRESHOLDS.ckd.source],
-    ));
+    );
+    contributions.push(sustained ? row : { ...row, unconfirmed: true });
   }
   return { contributions, diagnostic };
 }
@@ -284,7 +290,6 @@ function labTrends(ctx: Ctx, specs: LabTrendSpec[]): Contribution[] {
     if (s.toward === "up" ? last.value >= s.threshold : last.value <= s.threshold) continue;
 
     const crossing = labCrossing(t, s.threshold);
-    const rapid = s.metric === "egfr" && isRapidEgfrDecline(t);
     const slope = `${s.toward === "up" ? "rising" : "falling"} ${withUnit(num(Math.abs(t.slopePerYear), 2), s.unit)}/yr (Sen's slope, Mann-Kendall p = ${num(t.p, 3)})`;
     let reason: string;
     if (crossing) {
@@ -295,17 +300,34 @@ function labTrends(ctx: Ctx, specs: LabTrendSpec[]): Contribution[] {
     } else {
       reason = `${s.label} ${slope}, moving toward the ${withUnit(String(s.threshold), s.unit)} ${s.line} with no crossing inside 3 years.`;
     }
-    if (rapid) reason += ` That is faster than ${THRESHOLDS.ckd.rapidDeclinePerYear} per year, the KDIGO rapid-decline mark.`;
 
     out.push(contribution(
       "trend",
-      trendPoints(crossing?.days ?? null) + (rapid ? POINTS.trend.rapidEgfrDecline : 0),
+      trendPoints(crossing?.days ?? null),
       reason,
       lastN(pts, 10).map((p) => ev(s.metric, p)),
-      [s.source, "mann_1945", "sen_1968", ...(rapid ? (["kdigo_2012"] as const) : [])],
+      [s.source, "mann_1945", "sen_1968"],
     ));
   }
   return out;
+}
+
+/**
+ * KDIGO 2012 rapid progression: a significant eGFR decline faster than 5 mL/min/1.73m²/yr floors the CKD flag at
+ * review (DECISIONS 2026-10-17). It earns no points, so the row is 0 and the floor is applied in `applyFloors`.
+ * Independent of the trend row, because an eGFR already below 60 gets no trend but can still be falling fast.
+ */
+function rapidEgfrDecline(ctx: Ctx): Contribution | null {
+  const pts = ctx.series("egfr");
+  const t = labTrend(pts);
+  if (!t || !isRapidEgfrDecline(t, THRESHOLDS.ckd.rapidDeclinePerYear)) return null;
+  return contribution(
+    "trend",
+    0,
+    `eGFR falling ${num(Math.abs(t.slopePerYear), 1)} mL/min/1.73m²/yr (Sen's slope, Mann-Kendall p = ${num(t.p, 3)}), faster than ${THRESHOLDS.ckd.rapidDeclinePerYear} per year (KDIGO rapid decline); sets this flag to at least review.`,
+    lastN(pts, 10).map((p) => ev("egfr", p)),
+    [THRESHOLDS.ckd.rapidDeclineSource, "mann_1945", "sen_1968"],
+  );
 }
 
 /** Home BP: OLS over the daily readings (vitals regime). Systolic and diastolic each get a trend; the sooner one counts. */
@@ -408,7 +430,23 @@ function sleepContribution(ctx: Ctx): Contribution | null {
 function ledger(condition: Condition, contributions: Contribution[], diagnostic = false): ConditionLedger {
   const capped = applyLayerCap(contributions);
   const points = totalPoints(capped);
-  return { condition, contributions: capped, points, severity: severityFromPoints(points), basis: "points", diagnostic };
+  return { condition, contributions: capped, points, severity: severityFromPoints(points), basis: "points", diagnostic, label: null };
+}
+
+/**
+ * Floors on top of the bands, highest first: a diagnostic range or rapid eGFR decline sets at least review, a single
+ * unconfirmed abnormal result sets at least monitor. Screens set none.
+ */
+function applyFloors(l: ConditionLedger, rapid: boolean): ConditionLedger {
+  const unconfirmed = l.contributions.some((c) => c.unconfirmed);
+  const floors: { severity: Severity; basis: SeverityBasis }[] = [];
+  if (l.diagnostic) floors.push({ severity: "review", basis: "diagnostic_floor" });
+  if (rapid) floors.push({ severity: "review", basis: "rapid_decline_floor" });
+  if (unconfirmed) floors.push({ severity: "monitor", basis: "unconfirmed_floor" });
+  const floor = floors.reduce<(typeof floors)[number] | null>((best, f) => (best && severityRank(best.severity) >= severityRank(f.severity) ? best : f), null);
+  const label = unconfirmed && !l.diagnostic ? UNCONFIRMED_LABEL : null;
+  if (!floor || severityRank(floor.severity) <= severityRank(l.severity)) return { ...l, label };
+  return { ...l, severity: floor.severity, basis: floor.basis, label };
 }
 
 /** Stale marking: a daily-series trend or shift from a patient who stopped logging (RISK_ENGINE §6, gap layer). */
@@ -435,20 +473,22 @@ export function evaluate(rec: PatientRecord): Evaluation {
     primary: Contribution[],
     support: (hasTrend: boolean) => Contribution[],
     diagnostic = false,
+    rapid = false,
   ) => {
     const hasTrend = primary.some((c) => c.layer === "trend");
-    const all = hasPrimary(primary) ? [...primary, ...support(hasTrend)] : primary;
+    const all = hasPrimary(primary) || rapid ? [...primary, ...support(hasTrend)] : primary;
     const l = ledger(condition, all.map((c) => markStale(c, silence)), diagnostic);
-    if (l.contributions.length > 0) ledgers.push(l);
+    if (l.contributions.length > 0) ledgers.push(applyFloors(l, rapid));
   };
   const sleepSupport = sleep ? [sleep] : [];
 
   build("t2d",
     [...t2dT.contributions, ...canriskScore(ctx), ...labTrends(ctx, LAB_TRENDS.t2d), ...symptomLayer(ctx, "t2d")],
     (hasTrend) => [...changepointLayer(ctx, ["weight_kg"], hasTrend), ...sleepSupport], t2dT.diagnostic);
+  const rapidRow = rapidEgfrDecline(ctx);
   build("ckd",
-    [...ckdT.contributions, ...labTrends(ctx, LAB_TRENDS.ckd), ...symptomLayer(ctx, "ckd")],
-    () => [], ckdT.diagnostic);
+    [...ckdT.contributions, ...labTrends(ctx, LAB_TRENDS.ckd), ...(rapidRow ? [rapidRow] : []), ...symptomLayer(ctx, "ckd")],
+    () => [], ckdT.diagnostic, rapidRow !== null);
   build("htn",
     [...htnT.contributions, ...htnTrend(ctx), ...symptomLayer(ctx, "htn")],
     (hasTrend) => [...changepointLayer(ctx, ["bp_systolic", "bp_diastolic"], hasTrend), ...sleepSupport], htnT.diagnostic);
@@ -472,15 +512,12 @@ export function evaluate(rec: PatientRecord): Evaluation {
     ledgers.push({ ...l, severity: "monitor", basis: "gap_only" });
   }
 
-  // Severity floors on top of the bands: diagnostic range = at least review; two or more = urgent.
+  // Two or more conditions in a diagnostic range set urgent (the single-condition floors are in applyFloors).
   const diagnostic = ledgers.filter((l) => l.diagnostic);
-  for (const l of diagnostic) {
-    if (diagnostic.length >= 2) {
-      l.basis = l.severity === "urgent" ? "points" : "multiple_diagnostic";
+  if (diagnostic.length >= 2) {
+    for (const l of diagnostic) {
+      l.basis = l.severity === "urgent" && l.basis === "points" ? "points" : "multiple_diagnostic";
       l.severity = "urgent";
-    } else if (l.severity !== "urgent" && l.severity !== "review") {
-      l.severity = "review";
-      l.basis = "diagnostic_floor";
     }
   }
 

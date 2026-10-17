@@ -64,12 +64,41 @@ describe("evaluate: threshold layer and severity floors", () => {
     expect(t2d.contributions[0].sourceIds).toEqual(["diabetes_canada_2018"]);
   });
 
-  it("HbA1c 5.5 to 6.4 is the monitor range: 2 points, which alone is below the monitor band", () => {
+  it("a single HbA1c 5.5 to 6.4 is 2 points, below the monitor band, but floors at monitor as unconfirmed", () => {
     const e = evaluate(baseRecord({ obs: { hba1c: labs([5.8], 365) } }));
     const t2d = ledgerOf(e, "t2d")!;
     expect(t2d.points).toBe(2);
     expect(t2d.diagnostic).toBe(false);
-    expect(t2d.severity).toBeNull();
+    expect(t2d.severity).toBe("monitor");
+    expect(t2d.basis).toBe("unconfirmed_floor");
+    expect(t2d.label).toBe("unconfirmed, repeat test suggested");
+    expect(t2d.contributions[0].unconfirmed).toBe(true);
+    expect(t2d.contributions[0].reason).toContain("unconfirmed, repeat test suggested");
+  });
+
+  it("a single fasting glucose in the 5.6 to 6.9 range floors at monitor; at 7.0 it is diagnostic, not unconfirmed", () => {
+    const at = ledgerOf(evaluate(baseRecord({ obs: { fpg: labs([6.3], 365) } })), "t2d")!;
+    expect([at.severity, at.basis, at.label]).toEqual(["monitor", "unconfirmed_floor", "unconfirmed, repeat test suggested"]);
+    const diag = ledgerOf(evaluate(baseRecord({ obs: { fpg: labs([7.1], 365) } })), "t2d")!;
+    expect([diag.severity, diag.basis, diag.label]).toEqual(["review", "diagnostic_floor", null]);
+    expect(diag.contributions[0].unconfirmed).toBeUndefined();
+  });
+
+  it("HbA1c just under the 5.5 at-risk line stays quiet", () => {
+    expect(ledgerOf(evaluate(baseRecord({ obs: { hba1c: labs([5.4], 365) } })), "t2d")).toBeUndefined();
+  });
+
+  it("a single eGFR < 60 or ACR >= 3 floors at monitor as unconfirmed", () => {
+    for (const obs of [{ egfr: labs([52], 365) }, { acr: labs([3.4], 365) }] as Record<string, Pt[]>[]) {
+      const ckd = ledgerOf(evaluate(baseRecord({ obs })), "ckd")!;
+      expect([ckd.points, ckd.severity, ckd.basis, ckd.label]).toEqual([2, "monitor", "unconfirmed_floor", "unconfirmed, repeat test suggested"]);
+    }
+  });
+
+  it("a normal earlier result does not confirm: the latest stays unconfirmed", () => {
+    const ckd = ledgerOf(evaluate(baseRecord({ obs: { egfr: labs([75, 58], 200) } })), "ckd")!;
+    expect(ckd.label).toBe("unconfirmed, repeat test suggested");
+    expect(ckd.diagnostic).toBe(false);
   });
 
   it("fasting glucose >= 7.0 is diagnostic on its own", () => {
@@ -85,12 +114,19 @@ describe("evaluate: threshold layer and severity floors", () => {
     expect(ckd.contributions[0].sourceIds).toEqual(["kdigo_2024"]);
   });
 
-  it("eGFR < 60 twice but only 30 days apart is a single confirmation window: monitor range, not diagnostic", () => {
+  it("eGFR < 60 twice but only 30 days apart is not sustained: unconfirmed, monitor, not diagnostic", () => {
     const e = evaluate(baseRecord({ obs: { egfr: labs([55, 54], 30) } }));
     const ckd = ledgerOf(e, "ckd")!;
     expect(ckd.diagnostic).toBe(false);
     expect(ckd.points).toBe(2);
-    expect(ckd.severity).toBeNull();
+    expect(ckd.severity).toBe("monitor");
+    expect(ckd.label).toBe("unconfirmed, repeat test suggested");
+  });
+
+  it("a sustained result carries no unconfirmed label", () => {
+    const ckd = ledgerOf(evaluate(baseRecord({ obs: { egfr: labs([55, 54], 120) } })), "ckd")!;
+    expect(ckd.label).toBeNull();
+    expect(ckd.contributions.some((c) => c.unconfirmed)).toBe(false);
   });
 
   it("an older in-range result confirms the latest even with a normal one between them", () => {
@@ -197,19 +233,48 @@ describe("evaluate: trend layer", () => {
     expect(ledgerOf(e, "t2d")!.contributions.map((c) => c.layer)).toEqual(["threshold"]);
   });
 
-  it("falling eGFR above 60 earns a trend; a rapid decline adds a point and cites KDIGO 2012", () => {
+  it("falling eGFR above 60 earns a 2-point trend, plus a 0-point rapid-decline row citing KDIGO 2012 that floors at review", () => {
     const e = evaluate(baseRecord({ obs: { egfr: labs([88, 85, 82, 79, 76, 73], 182) } }));
-    const trend = ledgerOf(e, "ckd")!.contributions.find((c) => c.layer === "trend")!;
-    expect(trend.points).toBe(3);
-    expect(trend.reason).toContain("rapid-decline");
-    expect(trend.sourceIds).toContain("kdigo_2012");
+    const ckd = ledgerOf(e, "ckd")!;
+    const [trend, rapid] = ckd.contributions.filter((c) => c.layer === "trend");
+    expect(trend.points).toBe(2);
+    expect(rapid.points).toBe(0);
+    expect(rapid.reason).toContain("KDIGO rapid decline");
+    expect(rapid.sourceIds).toEqual(["kdigo_2012", "mann_1945", "sen_1968"]);
+    expect(ckd.points).toBe(2);
+    expect(ckd.severity).toBe("review");
+    expect(ckd.basis).toBe("rapid_decline_floor");
+    expect(ckd.diagnostic).toBe(false);
   });
 
-  it("a slow eGFR decline is not marked rapid", () => {
+  it("a slow eGFR decline has no rapid-decline row and no floor", () => {
     const e = evaluate(baseRecord({ obs: { egfr: labs([90, 89, 88, 87, 86, 85], 182) } }));
-    const trend = ledgerOf(e, "ckd")?.contributions.find((c) => c.layer === "trend");
-    expect(trend?.reason ?? "").not.toContain("rapid-decline");
-    expect(trend?.sourceIds ?? []).not.toContain("kdigo_2012");
+    const ckd = ledgerOf(e, "ckd");
+    expect(ckd?.contributions.some((c) => c.sourceIds.includes("kdigo_2012")) ?? false).toBe(false);
+    expect(ckd?.basis ?? "points").not.toBe("rapid_decline_floor");
+  });
+
+  it("exactly 5 per year is not rapid (strictly greater)", () => {
+    const e = evaluate(baseRecord({ obs: { egfr: labs([85, 82.5, 80, 77.5, 75, 72.5], 182.625) } }));
+    expect(ledgerOf(e, "ckd")?.basis ?? "points").not.toBe("rapid_decline_floor");
+  });
+
+  it("rapid decline floors at review even when eGFR is already below 60 and there is no trend row", () => {
+    const e = evaluate(baseRecord({ obs: { egfr: labs([66, 64, 61, 57], 30) } }));
+    const ckd = ledgerOf(e, "ckd")!;
+    expect(ckd.contributions.some((c) => c.layer === "trend" && c.points > 0)).toBe(false);
+    expect(ckd.contributions.some((c) => c.layer === "trend" && c.points === 0)).toBe(true);
+    expect(ckd.severity).toBe("review");
+    expect(ckd.basis).toBe("rapid_decline_floor");
+  });
+
+  it("rapid decline is not a diagnostic range: with one other diagnostic condition it does not make both urgent", () => {
+    const e = evaluate(baseRecord({
+      obs: { egfr: labs([88, 85, 82, 79, 76, 73], 182), hba1c: labs([7.1], 365) },
+    }));
+    expect(ledgerOf(e, "ckd")!.severity).toBe("review");
+    expect(ledgerOf(e, "t2d")!.severity).toBe("review");
+    expect(e.patientSeverity).toBe("review");
   });
 
   it("metrics without a guideline threshold never create a trend (ALT)", () => {
@@ -432,23 +497,26 @@ describe("evaluate: seed story patients", () => {
     expect(t2d.contributions.some((c) => c.layer === "threshold")).toBe(false);
   });
 
-  it("Patient B: only htn is diagnostic (ACR 3.2 is a single result), so the patient is review, not urgent", () => {
+  it("Patient B: only htn is diagnostic (ACR 3.2 is a single result); CKD is review by the rapid-decline floor; patient review, not urgent", () => {
     const e = evaluateSeed(STORY_IDS.B);
     const htn = ledgerOf(e, "htn")!;
     expect(htn.diagnostic).toBe(true);
     expect(htn.severity).toBe("review");
     const ckd = ledgerOf(e, "ckd")!;
     expect(ckd.diagnostic).toBe(false);
-    expect(ckd.severity).not.toBe("urgent");
+    expect(ckd.points).toBe(4);
+    expect(ckd.severity).toBe("review");
+    expect(ckd.basis).toBe("rapid_decline_floor");
+    expect(ckd.label).toBe("unconfirmed, repeat test suggested");
     expect(e.patientSeverity).toBe("review");
     expect(e.conditions.filter((l) => l.diagnostic)).toHaveLength(1);
   });
 
-  it("Patient B: eGFR falling ~6/yr is a rapid-decline trend, and the BP shift is dated around Sep 3", () => {
+  it("Patient B: eGFR falling ~6/yr is a rapid-decline row, and the BP shift is dated around Sep 3", () => {
     const e = evaluateSeed(STORY_IDS.B);
-    const trend = ledgerOf(e, "ckd")!.contributions.find((c) => c.layer === "trend")!;
+    const trend = ledgerOf(e, "ckd")!.contributions.find((c) => c.layer === "trend" && c.points === 0)!;
     expect(trend.reason).toContain("eGFR falling");
-    expect(trend.reason).toContain("rapid-decline");
+    expect(trend.reason).toContain("KDIGO rapid decline");
     const cp = ledgerOf(e, "htn")!.contributions.find((c) => c.layer === "changepoint")!;
     expect(cp.reason).toContain("Home systolic shifted up");
     expect(cp.reason).toMatch(/around Sep [1-5] /);
