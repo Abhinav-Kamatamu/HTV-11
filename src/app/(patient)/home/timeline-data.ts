@@ -37,7 +37,13 @@ export function buildTimeline(summary: Summary): TimelineItem[] {
 
   const symptoms: TimelineItem[] = summary.symptomLogs.map((s) => ({
     kind: "symptom", id: s.id, ts: s.ts.getTime(), text: s.text, redFlag: s.redFlag,
-    labels: (s.codes as string[]).map((c) => (isSymptomCode(c) ? SYMPTOMS[c].label : c)),
+    // `codes` entries are either a plain code string (seed data) or `{code, severity}` (Gemini
+    // extraction via /api/ingest/symptom) — same (string | SymptomEntry) shape engine/symptoms.ts's
+    // own `entry()` normalizes. Rendering the raw object here crashed the page (React error #31).
+    labels: (s.codes as (string | { code: string })[]).map((c) => {
+      const code = typeof c === "string" ? c : c.code;
+      return isSymptomCode(code) ? SYMPTOMS[code].label : code;
+    }),
   }));
 
   const labs: TimelineItem[] = summary.labReports.map((l) => ({
