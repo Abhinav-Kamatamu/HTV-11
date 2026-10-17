@@ -1,17 +1,18 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, Loader2, RotateCcw } from "lucide-react";
+import { Camera, FileText, Loader2, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { metricLabel } from "../home/timeline-data";
 
-// Shared camera-upload card for T-061 (meal + device photo). Posts straight to the existing
-// ingest routes (ARCHITECTURE.md): the engine already re-runs server-side on each ingest, but
-// its `flags` are intentionally dropped here — CLAUDE.md §4, no risk alert reaches the patient
-// directly, only a clinician-validated message (shown on /home instead).
+// Shared upload card for T-061 (meal + device photo) and T-063 (lab report, photo or PDF).
+// Posts straight to the existing ingest routes (ARCHITECTURE.md): the engine already re-runs
+// server-side on each ingest, but its `flags` are intentionally dropped here — CLAUDE.md §4,
+// no risk alert reaches the patient directly, only a clinician-validated message (shown on
+// /home instead).
 
-type Kind = "meal" | "device";
+type Kind = "meal" | "device" | "labs";
 
 type MealResult = {
   meal: { items: { name?: string }[]; kcal: number | null; carbsG: number | null; proteinG: number | null; fatG: number | null };
@@ -23,11 +24,17 @@ type DeviceResult = {
   extraction: { status: string; data?: { confidence: number } };
 };
 
-type Result = MealResult | DeviceResult;
+type LabsResult = {
+  observations: { metric: string; value: number; unit: string }[];
+  extraction: { status: string; data?: { confidence: number } };
+};
 
-const COPY: Record<Kind, { title: string; hint: string; verb: string }> = {
-  meal: { title: "Log a meal", hint: "Take a photo of your plate", verb: "meal" },
-  device: { title: "Log a device reading", hint: "Take a photo of the screen (BP monitor, scale, fitness tracker)", verb: "reading" },
+type Result = MealResult | DeviceResult | LabsResult;
+
+const COPY: Record<Kind, { title: string; hint: string; verb: string; field: string; accept: string; capture: boolean }> = {
+  meal: { title: "Log a meal", hint: "Take a photo of your plate", verb: "meal", field: "photo", accept: "image/*", capture: true },
+  device: { title: "Log a device reading", hint: "Take a photo of the screen (BP monitor, scale, fitness tracker)", verb: "reading", field: "photo", accept: "image/*", capture: true },
+  labs: { title: "Upload a lab report", hint: "Take a photo or upload a PDF of your lab results", verb: "lab report", field: "doc", accept: "image/*,application/pdf", capture: false },
 };
 
 export function UploadCard({ kind, patientId }: { kind: Kind; patientId: string }) {
@@ -67,7 +74,7 @@ export function UploadCard({ kind, patientId }: { kind: Kind; patientId: string 
     try {
       const formData = new FormData();
       formData.set("patientId", patientId);
-      formData.set("photo", file);
+      formData.set(copy.field, file);
       const res = await fetch(`/api/ingest/${kind}`, { method: "POST", body: formData });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Something went wrong");
@@ -90,18 +97,23 @@ export function UploadCard({ kind, patientId }: { kind: Kind; patientId: string 
 
       {status !== "done" && (
         <>
-          {previewUrl ? (
+          {previewUrl && file?.type.startsWith("image/") ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={previewUrl} alt="" className="max-h-48 w-full rounded-lg border border-border object-cover" />
+          ) : previewUrl && file ? (
+            <div className="flex min-h-24 flex-col items-center justify-center gap-1.5 rounded-lg border border-border text-xs text-muted-foreground">
+              <FileText className="size-5" />
+              {file.name}
+            </div>
           ) : (
             <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:bg-muted/40">
               <Camera className="size-5" />
-              Take or choose a photo
+              {kind === "labs" ? "Take a photo or choose a file" : "Take or choose a photo"}
               <input
                 ref={inputRef}
                 type="file"
-                accept="image/*"
-                capture="environment"
+                accept={copy.accept}
+                capture={copy.capture ? "environment" : undefined}
                 className="hidden"
                 onChange={onPick}
               />
@@ -160,6 +172,23 @@ function ResultPreview({ kind, result }: { kind: Kind; result: Result }) {
         {confidence < 0.8 && (
           <Badge variant="outline" className="mt-1.5 border-border bg-muted text-muted-foreground">
             Estimated from photo, review the details
+          </Badge>
+        )}
+      </div>
+    );
+  }
+
+  if (kind === "labs") {
+    const labs = result as LabsResult;
+    return (
+      <div className="rounded-lg bg-muted/40 p-3">
+        <p className="text-sm font-medium">Logged lab report</p>
+        <p className="text-sm text-muted-foreground">
+          {labs.observations.map((o) => `${metricLabel(o.metric)} ${o.value} ${o.unit}`).join(" · ")}
+        </p>
+        {confidence < 0.8 && (
+          <Badge variant="outline" className="mt-1.5 border-border bg-muted text-muted-foreground">
+            Estimated from the document, review the details
           </Badge>
         )}
       </div>

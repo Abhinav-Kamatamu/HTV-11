@@ -3,8 +3,9 @@ import { ArrowLeft } from "lucide-react";
 import { STORY_IDS } from "@/db/seed/ids";
 import { UploadCard } from "./upload-card";
 
-// Camera upload for meal + device photo (T-061). Posts to the existing `/api/ingest/meal` and
-// `/api/ingest/device` routes (core, T-005); this page is just the patient-side capture + preview UI.
+// Camera upload for meal + device photo (T-061), plus lab report upload (T-063, photo or PDF).
+// Posts to the existing `/api/ingest/{meal,device,labs}` routes (core, T-005); this page is just
+// the patient-side capture + preview UI.
 
 export default async function UploadPage({
   searchParams,
@@ -28,6 +29,7 @@ export default async function UploadPage({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <UploadCard kind="meal" patientId={patientId} />
         <UploadCard kind="device" patientId={patientId} />
+        <UploadCard kind="labs" patientId={patientId} />
       </div>
     </div>
   );
