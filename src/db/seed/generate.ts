@@ -256,6 +256,106 @@ export function allProfiles(): Profile[] {
   return [...STORY_PROFILES, ...Array.from({ length: CONTROL_COUNT }, (_, i) => controlProfile(i)), SILENT_PROFILE];
 }
 
+// Scale mode (RISK_ENGINE §9, T-009): `npm run db:seed -- --scale N` generates N patients from the
+// same seeded RNG. Story patients A/B/C/urgent keep their fixed ids; everyone else is drawn from a
+// fixed archetype mix so the queue is not all red.
+export type Archetype = "stable" | "slow_drift" | "rapid_decline" | "silent" | "metabolic_cluster";
+
+export const ARCHETYPE_MIX: readonly { archetype: Archetype; share: number }[] = [
+  { archetype: "stable", share: 0.70 },
+  { archetype: "slow_drift", share: 0.15 },
+  { archetype: "rapid_decline", share: 0.05 },
+  { archetype: "silent", share: 0.05 },
+  { archetype: "metabolic_cluster", share: 0.05 },
+];
+
+/** Deterministic bucketing by cumulative share, so the mix is exact regardless of `total`. */
+function archetypeAt(index: number, total: number): Archetype {
+  const frac = index / total;
+  let acc = 0;
+  for (const { archetype, share } of ARCHETYPE_MIX) {
+    acc += share;
+    if (frac < acc) return archetype;
+  }
+  return ARCHETYPE_MIX[ARCHETYPE_MIX.length - 1].archetype;
+}
+
+/** Own RNG namespace (10000s/20000s) so scale mode never shifts the default ~25-patient draws, even
+ * though patient numbers can overlap (the default silent patient is num 25; a scale run's patient 25
+ * is almost always a different archetype — expected, a reseed replaces the prior run's rows). */
+function scaleProfile(num: number, archetype: Archetype): Profile {
+  const rng = subRng(SEED, 10_000 + num);
+  const extra = subRng(SEED, 20_000 + num);
+  const sex: Sex = rng.chance(0.5) ? "female" : "male";
+  const base: Profile = {
+    num,
+    name: `${FIRST[num % FIRST.length]} ${LAST[(num * 7 + 3) % LAST.length]}`,
+    sex,
+    age: rng.int(30, 75),
+    story: "control",
+    labCount: archetype === "slow_drift" || archetype === "rapid_decline" ? 6 : rng.int(3, 5),
+    labIntervalDays: archetype === "slow_drift" || archetype === "rapid_decline" ? 182 : undefined,
+    labs: {},
+    waist: { latest: round(rng.uniform(sex === "female" ? 76 : 86, sex === "female" ? 90 : 100), 0), perYear: 0 },
+    vitals: {
+      sys: round(rng.uniform(112, 128), 0),
+      dia: 70 + Math.round((round(rng.uniform(70, 80), 0) - 70) * 0.6),
+      weight: round(rng.uniform(sex === "female" ? 58 : 72, sex === "female" ? 78 : 92), 0),
+      hr: round(rng.uniform(60, 76), 0),
+      steps: round(rng.uniform(5500, 10500), -2),
+      sleep: round(rng.uniform(6.8, 8.2), 1),
+    },
+    missingRate: 0.05,
+    heightCm: round(sex === "female" ? extra.uniform(155, 172) : extra.uniform(168, 188), 0),
+    neckCm: round(sex === "female" ? extra.uniform(31, 36) : extra.uniform(36, 39.5), 0),
+    medications: [],
+    sleepCheckin: { snoring: 0, tired: 0, observedApnea: 0 },
+  };
+
+  switch (archetype) {
+    case "stable":
+      return base;
+    case "slow_drift":
+      return {
+        ...base,
+        hba1cPerYear: round(rng.uniform(0.03, 0.08), 3),
+        waist: { ...base.waist, perYear: round(rng.uniform(1, 3), 1) },
+      };
+    case "rapid_decline": {
+      // KDIGO 2012 rapid progression is a decline faster than 5 mL/min/1.73m²/yr; draw comfortably
+      // past it. targetEgfr is oldest first (like story patient B's [88, 85, 82, ...]): index 0 is
+      // the highest, declining toward the most recent draw.
+      const startEgfr = round(rng.uniform(75, 95), 0);
+      const declinePerYear = round(rng.uniform(7, 13), 1);
+      const intervalYears = base.labIntervalDays! / 365.25;
+      const targetEgfr = Array.from(
+        { length: base.labCount },
+        (_, i) => round(startEgfr - declinePerYear * intervalYears * i, 0),
+      );
+      return { ...base, targetEgfr };
+    }
+    case "silent":
+      return { ...base, silentDays: rng.int(8, 25) };
+    case "metabolic_cluster":
+      // 3 of 5 met naturally (waist, triglycerides, BP), no treatment override needed.
+      return {
+        ...base,
+        waist: { latest: round(rng.uniform(sex === "female" ? 90 : 104, sex === "female" ? 100 : 115), 0), perYear: 0 },
+        labs: { triglycerides: Array.from({ length: base.labCount }, () => round(rng.uniform(1.8, 2.6), 2)) },
+        vitals: { ...base.vitals, sys: round(rng.uniform(132, 148), 0), dia: round(rng.uniform(85, 95), 0) },
+      };
+  }
+}
+
+export function generateScaleProfiles(scale: number): Profile[] {
+  const extraCount = scale - STORY_PROFILES.length;
+  if (extraCount < 0) throw new Error(`--scale must be at least ${STORY_PROFILES.length}`);
+  return [
+    ...STORY_PROFILES,
+    ...Array.from({ length: extraCount }, (_, i) => scaleProfile(5 + i, archetypeAt(i, extraCount))),
+  ];
+}
+
 const MEALS = [
   { name: "Chicken rice bowl", kcal: 650, carbs: 80, protein: 38, fat: 18, fibre: 5, sodium: 900 },
   { name: "Pepperoni pizza, 2 slices", kcal: 620, carbs: 68, protein: 26, fat: 28, fibre: 4, sodium: 1350 },
@@ -298,7 +398,7 @@ function labValue(p: Profile, metric: LabMetric, i: number, rng: Rng, age: numbe
   }
 }
 
-export function generateSeed(anchor: Date): SeedData {
+export function generateSeed(anchor: Date, profiles: Profile[] = allProfiles()): SeedData {
   // `anchor` is midnight UTC of "today"; no seeded timestamp is at or after it.
   const anchorMs = anchor.getTime();
   const data: SeedData = {
@@ -310,7 +410,7 @@ export function generateSeed(anchor: Date): SeedData {
     labReports: [],
   };
 
-  for (const p of allProfiles()) {
+  for (const p of profiles) {
     const rng = subRng(SEED, p.num);
     const hdlRng = subRng(SEED, 400 + p.num); // own stream, so adding HDL never shifts the existing draws
     const id = p.num <= 4 ? Object.values(STORY_IDS)[p.num - 1] : seedId(ID_KIND.patient, p.num);

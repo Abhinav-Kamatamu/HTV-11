@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ckdEpi2021, generateSeed, UNITS } from "./generate";
+import { dayOf } from "../../engine/types";
+import { ARCHETYPE_MIX, ckdEpi2021, generateScaleProfiles, generateSeed, UNITS } from "./generate";
 import { SEED_ID_PREFIX, SILENT_ID, STORY_IDS } from "./ids";
 
 const anchor = new Date("2026-10-17T00:00:00Z");
@@ -202,5 +203,72 @@ describe("seed generator", () => {
     const [cr] = series(STORY_IDS.B, "creatinine");
     const [eg] = series(STORY_IDS.B, "egfr");
     expect(Math.abs(ckdEpi2021(cr.value, 57, "male") - eg.value)).toBeLessThan(3);
+  });
+});
+
+// Scale mode (RISK_ENGINE §9, T-009): `npm run db:seed -- --scale N`.
+describe("scale mode", () => {
+  const scaleData = generateSeed(anchor, generateScaleProfiles(1000));
+  const scaleSeries = (patientId: string, metric: string) =>
+    scaleData.observations
+      .filter((o) => o.patientId === patientId && o.metric === metric)
+      .sort((a, b) => +a.ts - +b.ts);
+
+  it("is deterministic and keeps the story patients' fixed ids", () => {
+    expect(generateSeed(anchor, generateScaleProfiles(1000))).toEqual(scaleData);
+    expect(scaleData.patients).toHaveLength(1000);
+    for (const id of Object.values(STORY_IDS)) {
+      expect(scaleData.patients.some((p) => p.id === id)).toBe(true);
+    }
+  });
+
+  it("generates 1000 distinct patient ids, all under the seed prefix", () => {
+    const ids = scaleData.patients.map((p) => p.id!);
+    expect(new Set(ids).size).toBe(1000);
+    expect(ids.every((id) => id.startsWith(SEED_ID_PREFIX))).toBe(true);
+  });
+
+  it("follows the documented archetype mix exactly (deterministic bucketing, not sampled)", () => {
+    const extraCount = 1000 - Object.keys(STORY_IDS).length;
+    const profiles = generateScaleProfiles(1000).slice(Object.keys(STORY_IDS).length);
+    expect(profiles).toHaveLength(extraCount);
+    // Can't read the archetype back off a Profile directly, so cross-check via a telltale field instead:
+    // only "silent" sets silentDays, and only "rapid_decline"/"slow_drift" set labIntervalDays.
+    const silentCount = profiles.filter((p) => p.silentDays !== undefined).length;
+    const expectedSilent = ARCHETYPE_MIX.find((a) => a.archetype === "silent")!.share * extraCount;
+    expect(Math.abs(silentCount - expectedSilent)).toBeLessThanOrEqual(1);
+  });
+
+  it("rapid_decline patients decline faster than the 5/yr KDIGO threshold", () => {
+    const withTargets = generateScaleProfiles(1000).filter((p) => p.targetEgfr && p.story === "control");
+    expect(withTargets.length).toBeGreaterThan(0);
+    for (const p of withTargets) {
+      const first = p.targetEgfr![0];
+      const last = p.targetEgfr![p.targetEgfr!.length - 1];
+      const years = (p.labIntervalDays! * (p.targetEgfr!.length - 1)) / 365.25;
+      expect((first - last) / years, p.name).toBeGreaterThan(5);
+    }
+  });
+
+  it("metabolic_cluster patients meet at least 3 of the 5 criteria naturally", () => {
+    const candidates = generateScaleProfiles(1000)
+      .filter((p) => p.story === "control" && p.labs.triglycerides && p.vitals.sys >= 130);
+    expect(candidates.length).toBeGreaterThan(0);
+    for (const p of candidates) {
+      const tg = p.labs.triglycerides![0];
+      expect(tg, p.name).toBeGreaterThanOrEqual(1.7);
+      expect(p.vitals.sys >= 130 || p.vitals.dia >= 85, p.name).toBe(true);
+    }
+  });
+
+  it("silent archetype patients actually stop logging before the anchor", () => {
+    const profiles = generateScaleProfiles(1000);
+    const index = profiles.findIndex((p) => p.silentDays !== undefined && p.story === "control");
+    expect(index).toBeGreaterThan(-1);
+    // `data.patients` is pushed in profile order, so position lines the two arrays up.
+    const patientId = scaleData.patients[index].id!;
+    const readings = scaleSeries(patientId, "bp_systolic");
+    const lastReadingDaysAgo = dayOf(+anchor) - dayOf(+readings[readings.length - 1].ts);
+    expect(lastReadingDaysAgo).toBe(profiles[index].silentDays);
   });
 });

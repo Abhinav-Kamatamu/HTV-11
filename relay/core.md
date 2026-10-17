@@ -4,7 +4,7 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-001 to T-005, T-007, T-008 done and pushed. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below). SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
+T-001 to T-005, T-007 to T-009 done and pushed. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below). SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
 
 T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + engine + Gemini), skipping the stub phase since the engine/db wiring was already straightforward: `src/app/api/_lib/{http,engine-db,gemini,uploads}.ts` are the shared glue, one `route.ts` per endpoint. Smoke-tested live against Tiger Cloud + real Gemini (see Gotchas) — queue ranking, validate/dismiss/message, and the symptom red-flag path all confirmed working before committing.
 
@@ -12,14 +12,18 @@ T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + eng
 (none)
 
 ## Next up
-- **T-009** scale mode (`--scale 1000`).
+- **T-010** benchmark page API (`POST /api/benchmark/run`) — T-007/T-008/T-009 all done, so this is unblocked (also needs engine's T-024, done). The three paths to compare are already built: `src/db/vitals.ts` (continuous aggregate), a raw-`observations` version of the same query (not yet written — needed for the "no aggregate" path), and plain TS (`src/engine/trends.ts`/`loadPatientRecord`'s fetch-and-compute). `src/db/silence.ts` is the silent-patient-scan path already.
 - **T-006** deploy to Vultr: `UPLOAD_DIR` files aren't served back yet (no `GET /api/uploads/:file`); decide before deploy whether uploads need to survive a container restart (volume mount) or just need to exist long enough for the demo.
-- **T-010** benchmark page API, once T-009 lands (also needs T-007/T-008, both done).
 - **T-011 leftovers:** `hdl`, `neck_cm`, weekly `sleep_*` check-ins, a step change in Patient B's home BP (the seed BP is flat at 141/88 for now), Patient C 3 criteria met + 2 unknown, one silent patient (every seed patient currently logs through yesterday).
 - Optional hardening: get Tiger's CA and move to `sslmode=verify-full` (DECISIONS 03:40).
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **Scale mode (T-009, `src/db/seed/{generate,copy,index}.ts`)**
+  - `npm run db:seed -- --scale 1000` (or any N >= 4). `generateScaleProfiles(scale)` keeps STORY_PROFILES (A/B/C/urgent) fixed and fills the rest from `ARCHETYPE_MIX` (70/15/5/5/5: stable/slow_drift/rapid_decline/silent/metabolic_cluster) via deterministic cumulative-share bucketing, own RNG namespace (10000s/20000s) so it never shifts the default ~25-patient draws.
+  - Observations go through a real `COPY FROM STDIN` (`src/db/seed/copy.ts`, new dep `pg-copy-streams`) outside the main transaction — COPY needs a dedicated checked-out client, not the `Pool`/a drizzle `tx`. The default (no `--scale`) path is untouched (still the old chunked INSERT inside the transaction).
+  - Live-verified at `--scale 1000` against Tiger Cloud: 1,000 patients / 604,528 observations (~77s to seed), `db:verify-silence` and `db:verify-vitals` both 100% (1000/1000, 6000/6000), full engine re-run ~78s for all 1000, queue read ~250ms, severity mix 739 none / 104 monitor / 156 review / 1 urgent. **Reseeded back to the default ~25 afterward and re-ran the engine** — if you run `--scale` again for T-010 work, do the same before anyone else needs the demo dataset back.
+  - `rapid_decline`'s `targetEgfr` is oldest-first, decline applied forward from index 0 (`startEgfr - declinePerYear*intervalYears*i`) — an inverted first draft had zero decline on the most recent reading; the new scale-mode tests in `generate.test.ts` caught it.
 - **Silent patients (T-008, `src/db/silence.ts`)**
   - **`dead_ranges()`'s `start` is `lastHeartbeat + heartbeat_liveness`, not `lastHeartbeat`.** The toolkit only calls a patient "dead" once the full liveness grace period has elapsed, so the reported gap starts later than the real last reading by exactly `heartbeat_liveness`. `listSilenceSql` subtracts `SILENCE.quietDays` back out — found by running it against Rosa Delgado's real data (her gap looked like it started 7 days after her actual last reading, with `daysSince` off by exactly 7). Not in `pg_proc`'s signatures; only shows up by actually running it. **If you query `dead_ranges()` directly for anything else, remember this offset.**
   - `heartbeat_agg`'s window is each patient's own `min(ts)` to `now` (not a fixed width) so there's no leading dead-range to trim — the window is the patient's whole history.

@@ -2,36 +2,44 @@ import { sql } from "drizzle-orm";
 import { getDb, getPool } from "../client";
 import { clinicians, labReports, meals, observations, patients, symptomLogs } from "../schema";
 import { refreshStatements } from "../timescale";
-import { generateSeed } from "./generate";
+import { copyInsert } from "./copy";
+import { generateScaleProfiles, generateSeed } from "./generate";
 import { SEED_ID_PREFIX } from "./ids";
 
-// Run with `npm run db:seed`. Options: --anchor YYYY-MM-DD (default: today, UTC), --dry-run.
-// The database is shared: this replaces the seed's own rows (uuids starting with SEED_ID_PREFIX)
-// and leaves everything else alone. Announce before running it.
+// Run with `npm run db:seed`. Options: --anchor YYYY-MM-DD (default: today, UTC), --dry-run,
+// --scale N (RISK_ENGINE §9, T-009: N patients from the same seeded RNG, story patients keep their
+// fixed ids, N must be at least 4). The database is shared: this replaces the seed's own rows (uuids
+// starting with SEED_ID_PREFIX) and leaves everything else alone. Announce before running it.
 const CHUNK = 1000;
 
 function parseArgs(argv: string[]) {
   let anchor = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
   let dryRun = false;
+  let scale: number | undefined;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--dry-run") dryRun = true;
     else if (argv[i] === "--anchor") {
       anchor = new Date(`${argv[++i]}T00:00:00Z`);
       if (Number.isNaN(anchor.getTime())) throw new Error("--anchor needs YYYY-MM-DD");
-    } else throw new Error(`Unknown argument ${argv[i]} (--scale arrives with T-009)`);
+    } else if (argv[i] === "--scale") {
+      scale = Number(argv[++i]);
+      if (!Number.isInteger(scale) || scale < 4) throw new Error("--scale needs an integer >= 4");
+    } else throw new Error(`Unknown argument ${argv[i]}`);
   }
-  return { anchor, dryRun };
+  return { anchor, dryRun, scale };
 }
 
 async function insertChunked<T>(rows: T[], insert: (chunk: T[]) => Promise<unknown>) {
   for (let i = 0; i < rows.length; i += CHUNK) await insert(rows.slice(i, i + CHUNK));
 }
 
+const OBSERVATION_COLUMNS = ["patient_id", "ts", "metric", "value", "unit", "source", "confidence", "raw_ref"] as const;
+
 async function main() {
-  const { anchor, dryRun } = parseArgs(process.argv.slice(2));
-  const data = generateSeed(anchor);
+  const { anchor, dryRun, scale } = parseArgs(process.argv.slice(2));
+  const data = generateSeed(anchor, scale ? generateScaleProfiles(scale) : undefined);
   const counts = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v.length]));
-  console.log(`seed anchor ${anchor.toISOString().slice(0, 10)}`, counts);
+  console.log(`seed anchor ${anchor.toISOString().slice(0, 10)}${scale ? ` --scale ${scale}` : ""}`, counts);
   if (dryRun) return;
 
   const like = `${SEED_ID_PREFIX}%`;
@@ -60,7 +68,11 @@ async function main() {
     await insertChunked(data.labReports, (c) => tx.insert(labReports).values(c));
     await insertChunked(data.meals, (c) => tx.insert(meals).values(c));
     await insertChunked(data.symptomLogs, (c) => tx.insert(symptomLogs).values(c));
-    await insertChunked(data.observations, (c) => tx.insert(observations).values(c));
+    // --scale (T-009): a real COPY, not a parameterized INSERT — this table is the ~540k-row one.
+    // Outside the main transaction (COPY needs a dedicated connection) and before the DELETE above
+    // would otherwise matter, the observations for these ids were just cleared, so this is safe
+    // either way.
+    if (!scale) await insertChunked(data.observations, (c) => tx.insert(observations).values(c));
 
     // Seed patients that are no longer in the set (e.g. after a larger scale run), if nothing else uses them.
     const keep = sql.join(data.patients.map((p) => sql`${p.id}`), sql`, `);
@@ -72,6 +84,19 @@ async function main() {
         AND NOT EXISTS (SELECT 1 FROM symptom_logs s WHERE s.patient_id = p.id)
         AND NOT EXISTS (SELECT 1 FROM lab_reports l WHERE l.patient_id = p.id)`);
   });
+
+  if (scale) {
+    const client = await getPool().connect();
+    try {
+      const rows = data.observations.map((o) => [
+        o.patientId as string, (o.ts as Date).toISOString(), o.metric, o.value, o.unit, o.source as string,
+        o.confidence ?? 1, o.rawRef ?? null,
+      ]);
+      await copyInsert(client, "observations", OBSERVATION_COLUMNS, rows);
+    } finally {
+      client.release();
+    }
+  }
 
   // CALL cannot run inside a transaction.
   const pool = getPool();
