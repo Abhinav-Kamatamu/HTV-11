@@ -8,7 +8,7 @@ T-001 done: app scaffolded, `npm run dev/lint/test/build` work. T-002 half done 
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-003 Drizzle schema. Plan: (1) `src/db/schema.ts` per ARCHITECTURE.md + `flags.points`/`flags.contributions`, drizzle-kit generates the plain-table migration; (2) Timescale-only SQL (extensions, `observations` hypertable, `obs_daily/weekly/monthly` continuous aggregates with `stats_agg`) lives in `src/db/timescale.ts` and is applied idempotently by `src/db/migrate.ts` AFTER the drizzle migrator, outside a transaction (caggs can't be created in one); (3) `npm run db:migrate` runs that script. NOT verifiable on this machine (no Docker/Postgres), so SQL is unrun until T-002's checks are done.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
