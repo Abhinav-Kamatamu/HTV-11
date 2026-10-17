@@ -91,6 +91,11 @@ A trend flag fires when a metric is still inside the normal range but its projec
 within the horizon. This is the "each result looked normal" story. A change-point on its own is a supporting
 signal: it earns points (§6) but does not create a flag by itself.
 
+**Trend flags fire only for metrics that have a guideline threshold in `sources.ts`:** HbA1c (6.0), fasting
+glucose (6.1), eGFR (60), ACR (3) and home BP (130/80). Every other series (ALT, AST, GGT, platelets, HDL,
+creatinine, weight, steps, sleep, heart rate) is chart-only: it can be drawn and can carry a change-point,
+but its trend earns no points and creates no flag.
+
 ## 4. Co-occurrence and sleep layers
 
 Individually sub-threshold signals can compound. Two layers capture that, both deterministic.
@@ -185,7 +190,16 @@ Rules:
   summary; it cannot add, remove or change a contribution, and it may cite only the sources on the rows.
 - **Each layer is capped** at 4 points per condition so one noisy layer cannot dominate.
 - **Severity bands** (tunable, calibrate so the seed story patients land where SPEC §6 says): 0 to 2 no
-  flag, 3 to 5 `monitor`, 6 to 9 `review`, ≥ 10 `urgent`. A red-flag symptom bypasses this entirely (§5).
+  flag, 3 to 5 `monitor`, 6 to 9 `review`, ≥ 10 `urgent`.
+- **Severity floors** sit on top of the bands (decided 2026-10-17). A value in a guideline **diagnostic range**
+  sets at least `review`. **Two or more conditions** in a diagnostic range set `urgent` on those flags.
+  Diagnostic means sustained: HbA1c ≥ 6.5 or fasting glucose ≥ 7.0 (t2d); eGFR < 60 or ACR ≥ 3 on the latest
+  two results at least 90 days apart (ckd, KDIGO chronicity); home BP average ≥ 130/80 over ≥ 7 days (htn).
+  A single result in range is the **monitor range** (threshold layer +2) until it is confirmed. Metabolic
+  syndrome, STOP-Bang, CANRISK, FIB-4 and FLI are screens, never diagnostic, so they never set a floor.
+  A gap-only (`engagement`) flag is `monitor`.
+- **Red-flag symptoms** (§5) keep their bypass: the patient is `urgent` immediately and the clinician is
+  notified, whatever the points say. The red flag is a patient-level alert, not a condition flag.
 
 Starting point values (all in `points.ts`):
 

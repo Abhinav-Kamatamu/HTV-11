@@ -87,7 +87,7 @@ type Profile = {
   name: string;
   sex: Sex;
   age: number;
-  story: "A" | "B" | "C" | "urgent" | "control";
+  story: "A" | "B" | "C" | "urgent" | "silent" | "control";
   labCount: number; // lab points, oldest first
   labIntervalDays?: number; // days between lab draws, default 365 (yearly)
   /** Explicit lab series (oldest first) for story patients. Anything not listed is a flat baseline, with noise on controls only. */
@@ -102,6 +102,10 @@ type Profile = {
     hr: number; steps: number; sleep: number;
   };
   missingRate: number;
+  /** Home BP before `daysAgo` runs at the "before" level, then steps to `vitals.sys/dia` (CUSUM demo). */
+  bpStep?: { daysAgo: number; sysBefore: number; diaBefore: number };
+  /** Stops logging this many days before the anchor (vitals, sleep check-ins, tape measures). */
+  silentDays?: number;
   heightCm: number; // intake; BMI = weight / height² for STOP-Bang and the Fatty Liver Index
   neckCm: number; // intake, asked once
   medications: string[]; // intake; treatment counts as "met" for the BP, TG and HDL criteria
@@ -143,13 +147,14 @@ const STORY_PROFILES: Profile[] = [
     meals: true,
   },
   {
-    // B: eGFR falling ~6/yr while still above 60, ACR rising to A2, home BP averaging about 141/88.
-    // T-011 adds a step change to the BP series for CUSUM.
+    // B: eGFR falling ~6/yr while still above 60, ACR rising to A2, home BP stepping from ~126/78 to ~141/88
+    // about six weeks ago (the CUSUM change-point).
     num: 2, name: "Marcus Webb", sex: "male", age: 61, story: "B", labCount: 6, labIntervalDays: 182,
     targetEgfr: [88, 85, 82, 79, 76, 73],
     labs: { acr: [1.2, 1.6, 2.0, 2.4, 2.8, 3.2], hba1c: [5.4, 5.4, 5.4, 5.4, 5.4, 5.4] },
     waist: { latest: 101, perYear: 0.5 },
     vitals: { sys: 141, dia: 88, weight: 92, hr: 70, steps: 6100, sleep: 6.9 },
+    bpStep: { daysAgo: 42, sysBefore: 126, diaBefore: 78 },
     missingRate: 0.02,
     heightCm: 178, neckCm: 43, medications: [],
     sleepCheckin: { snoring: 1, tired: 1, observedApnea: 1 }, // STOP-Bang 7: S, T, O, P (home BP), age, neck, male
@@ -234,8 +239,21 @@ function controlProfile(i: number): Profile {
   };
 }
 
+// Logged every day, then nothing for the last 11 days: the heartbeat / gap layer (RISK_ENGINE §8).
+// Her systolic creeps up, so the last trend she has is stale rather than reassuring.
+const SILENT_PROFILE: Profile = {
+  num: 25, name: "Rosa Delgado", sex: "female", age: 58, story: "silent", labCount: 3,
+  labs: {},
+  waist: { latest: 84, perYear: 0 },
+  vitals: { sys: 120, dia: 74, sysPerDay: 0.12, weight: 70, hr: 68, steps: 6800, sleep: 7.2 },
+  missingRate: 0,
+  silentDays: 11,
+  heightCm: 163, neckCm: 33, medications: [],
+  sleepCheckin: { snoring: 0, tired: 0, observedApnea: 0 },
+};
+
 export function allProfiles(): Profile[] {
-  return [...STORY_PROFILES, ...Array.from({ length: CONTROL_COUNT }, (_, i) => controlProfile(i))];
+  return [...STORY_PROFILES, ...Array.from({ length: CONTROL_COUNT }, (_, i) => controlProfile(i)), SILENT_PROFILE];
 }
 
 const MEALS = [
@@ -337,6 +355,7 @@ export function generateSeed(anchor: Date): SeedData {
     for (let q = 0; q < 8; q++) {
       const monthsBack = (7 - q) * 3;
       const ts = anchorMs - (5 + monthsBack * 30) * DAY + 9 * HOUR;
+      if (anchorMs - ts < (p.silentDays ?? 0) * DAY) continue;
       obs(ts, "waist_cm", round(p.waist.latest - p.waist.perYear * (monthsBack / 12) + rng.normal(0, 0.4), 1));
     }
 
@@ -346,6 +365,7 @@ export function generateSeed(anchor: Date): SeedData {
     // Weekly sleep check-in: three yes/no taps (RISK_ENGINE §4b), thirteen weeks ending last week.
     for (let w = SLEEP_CHECKIN_WEEKS - 1; w >= 0; w--) {
       const ts = anchorMs - (2 + 7 * w) * DAY + 20 * HOUR;
+      if (anchorMs - ts < (p.silentDays ?? 0) * DAY) continue;
       obs(ts, "sleep_snoring", p.sleepCheckin.snoring);
       obs(ts, "sleep_tired", p.sleepCheckin.tired);
       obs(ts, "sleep_observed_apnea", p.sleepCheckin.observedApnea);
@@ -354,11 +374,15 @@ export function generateSeed(anchor: Date): SeedData {
     // 90 days of daily vitals ending yesterday. Missing days are skipped entirely.
     for (let d = VITALS_DAYS; d >= 1; d--) {
       if (rng.chance(p.missingRate)) continue;
+      if (d < (p.silentDays ?? 0)) continue;
       const t = VITALS_DAYS - d;
       const day = anchorMs - d * DAY;
       const v = p.vitals;
-      obs(day + 7.5 * HOUR, "bp_systolic", round(v.sys + (v.sysPerDay ?? 0) * t + rng.normal(0, 5), 0));
-      obs(day + 7.5 * HOUR, "bp_diastolic", round(v.dia + rng.normal(0, 3), 0));
+      const before = p.bpStep !== undefined && d > p.bpStep.daysAgo;
+      const sysBase = before ? p.bpStep!.sysBefore : v.sys;
+      const diaBase = before ? p.bpStep!.diaBefore : v.dia;
+      obs(day + 7.5 * HOUR, "bp_systolic", round(sysBase + (v.sysPerDay ?? 0) * t + rng.normal(0, 5), 0));
+      obs(day + 7.5 * HOUR, "bp_diastolic", round(diaBase + rng.normal(0, 3), 0));
       obs(day + 7 * HOUR, "weight_kg", round(v.weight + (v.weightPerDay ?? 0) * t + rng.normal(0, 0.3), 1));
       obs(day + 7 * HOUR, "resting_hr", round(v.hr + rng.normal(0, 2.5), 0));
       obs(day + 21 * HOUR, "steps", Math.max(500, round(v.steps + rng.normal(0, 1500), 0)));

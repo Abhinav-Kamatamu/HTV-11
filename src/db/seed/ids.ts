@@ -17,3 +17,6 @@ export const STORY_IDS = {
   C: seedId(ID_KIND.patient, 3),
   URGENT: seedId(ID_KIND.patient, 4),
 } as const;
+
+// The patient who logged daily and then went silent (T-011); the first number after the controls.
+export const SILENT_ID = seedId(ID_KIND.patient, 25);

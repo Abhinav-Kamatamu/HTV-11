@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { ckdEpi2021, generateSeed, UNITS } from "./generate";
-import { SEED_ID_PREFIX, STORY_IDS } from "./ids";
+import { SEED_ID_PREFIX, SILENT_ID, STORY_IDS } from "./ids";
 
 const anchor = new Date("2026-10-17T00:00:00Z");
 const data = generateSeed(anchor);
 const gapsInDays = (rows: { ts: Date }[]) => rows.slice(1).map((o, i) => (+o.ts - +rows[i].ts) / 86_400_000);
+const bMean = (metric: string, fromDaysAgo: number, toDaysAgo: number) => {
+  const v = data.observations
+    .filter((o) => o.patientId === STORY_IDS.B && o.metric === metric)
+    .filter((o) => +anchor - +o.ts <= fromDaysAgo * 86_400_000 && +anchor - +o.ts > toDaysAgo * 86_400_000)
+    .map((o) => o.value);
+  return v.reduce((a, b) => a + b, 0) / v.length;
+};
 const series = (patientId: string, metric: string) =>
   data.observations
     .filter((o) => o.patientId === patientId && o.metric === metric)
@@ -21,7 +28,7 @@ describe("seed generator", () => {
     for (const rows of [data.meals, data.symptomLogs, data.labReports]) {
       expect(rows.every((r) => r.id!.startsWith(SEED_ID_PREFIX))).toBe(true);
     }
-    expect(data.patients.length).toBe(24);
+    expect(data.patients.length).toBe(25);
   });
 
   it("uses the documented unit for every metric and nothing in the future", () => {
@@ -85,13 +92,27 @@ describe("seed generator", () => {
     expect(perYear).toBeLessThan(7);
     expect(Math.min(...egfr)).toBeGreaterThan(60);
     expect(series(STORY_IDS.B, "acr").at(-1)!.value).toBeGreaterThanOrEqual(3);
-    const mean = (m: string) => {
-      const v = series(STORY_IDS.B, m).map((o) => o.value);
-      return v.reduce((a, b) => a + b, 0) / v.length;
-    };
-    expect(mean("bp_systolic")).toBeGreaterThan(138);
-    expect(mean("bp_systolic")).toBeLessThan(144);
-    expect(mean("bp_diastolic")).toBeGreaterThan(85);
+    expect(bMean("bp_systolic", 30, 0)).toBeGreaterThan(138);
+    expect(bMean("bp_systolic", 30, 0)).toBeLessThan(144);
+    expect(bMean("bp_diastolic", 30, 0)).toBeGreaterThan(85);
+  });
+
+  it("Patient B: home BP steps from about 126/78 to about 140/87 roughly six weeks ago", () => {
+    expect(bMean("bp_systolic", 90, 50)).toBeGreaterThan(123);
+    expect(bMean("bp_systolic", 90, 50)).toBeLessThan(129);
+    expect(bMean("bp_diastolic", 90, 50)).toBeLessThan(80.5);
+    expect(bMean("bp_systolic", 36, 0)).toBeGreaterThan(137);
+    expect(bMean("bp_diastolic", 36, 0)).toBeGreaterThan(85);
+  });
+
+  it("silent patient: logs daily for 80 days, then nothing for the last 11", () => {
+    const rows = series(SILENT_ID, "bp_systolic");
+    const days = rows.map((o) => Math.ceil((+anchor - +o.ts) / 86_400_000));
+    expect(rows).toHaveLength(80);
+    expect(Math.min(...days)).toBe(11);
+    expect(new Set(days).size).toBe(80);
+    const late = data.observations.filter((o) => o.patientId === SILENT_ID && ["weight_kg", "steps", "sleep_snoring", "waist_cm"].includes(o.metric));
+    expect(late.every((o) => Math.ceil((+anchor - +o.ts) / 86_400_000) >= 11)).toBe(true);
   });
 
   it("Patient C: ALT/GGT/TG climb while FIB-4 stays low", () => {
@@ -155,7 +176,7 @@ describe("seed generator", () => {
       expect(series(p.id!, "neck_cm"), p.name).toHaveLength(1);
       for (const m of ["sleep_snoring", "sleep_tired", "sleep_observed_apnea"]) {
         const rows = series(p.id!, m);
-        expect(rows, `${p.name} ${m}`).toHaveLength(13);
+        expect(rows, `${p.name} ${m}`).toHaveLength(p.id === SILENT_ID ? 11 : 13);
         expect(rows.every((o) => o.value === 0 || o.value === 1)).toBe(true);
       }
     }
