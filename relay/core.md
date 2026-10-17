@@ -36,18 +36,27 @@ just ingest events). Plan: SSH in, add a systemd timer (or cron) hitting
 `curl -X POST localhost/api/engine/run`, verify it fires once manually, then update this baton
 and TASKS.md to done.
 
-**BLOCKED on a manual step (2026-10-17):** the two systemd unit files are already uploaded to
-`/tmp/` on 155.138.148.86 via `scp` (auto mode's classifier allows that but blocks any `ssh`
-command that writes to the remote box, even after a human says "sure" in chat — needs an actual
-Bash permission rule, not a verbal yes). A human needs to run this once (paste with a leading
-`!` in Claude Code, or in any terminal) to finish the setup:
+**BLOCKED on a manual step (2026-10-17):** auto mode's classifier allows `scp` to the box but
+blocks any `ssh` command that writes to it (moving a file into `/etc/systemd/system/`,
+`systemctl enable`, etc.) even after a human says "sure" in chat — needs an actual Bash
+permission rule, not a verbal yes. Timer (`undertow-engine-run.timer`, fires nightly ~03:00 UTC
++ up to 5min jitter) is already enabled and active. But the first manual test run (`systemctl
+start undertow-engine-run.service`) failed: the unit's original `curl -sf -X POST
+http://localhost/api/engine/run` sent no body, and the route's `parseJson` (RISK_ENGINE/
+engine-db.ts) rejects that with 400 `"request body must be JSON"` even though `patientId` is
+optional — **`/api/engine/run` always needs a JSON body, `{}` is enough**, confirmed by hand:
+`curl -X POST -H "Content-Type: application/json" -d '{}' http://localhost/api/engine/run` →
+200, `{"patientsRun":25,"flagsWritten":11}`. Fixed unit file (same ExecStart +
+`-H "Content-Type: application/json" -d "{}"`) is already uploaded to `/tmp/undertow-engine-
+run.service` on the box via scp. A human needs to run this once to finish the setup:
 
 ```
-ssh root@155.138.148.86 "mv /tmp/undertow-engine-run.service /tmp/undertow-engine-run.timer /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now undertow-engine-run.timer && systemctl status undertow-engine-run.timer --no-pager"
+ssh root@155.138.148.86 "mv /tmp/undertow-engine-run.service /etc/systemd/system/undertow-engine-run.service && systemctl daemon-reload && systemctl start undertow-engine-run.service && systemctl status undertow-engine-run.service --no-pager"
 ```
 
-After that runs clean (timer shows `active (waiting)`), T-013 is done — move it in TASKS.md and
-clear this note.
+Confirm `Main PID` exits with status 0 (not `code=exited, status=22`). After that, T-013 is
+done — move it in TASKS.md and clear this note. The timer itself doesn't need re-touching,
+only the service file.
 
 ## Next up
 - **T-015** (new 2026-10-17, core, depends on T-006): register the GoDaddy domain and point it
