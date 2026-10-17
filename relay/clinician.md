@@ -4,25 +4,40 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-042 through T-047 done.
+T-042 through T-048 done. Clinician lane's task list (TASKS.md) is now empty — see Next up.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-048: `/benchmark` ("Synthetic scale test") page.
-- Flip the `(clinician)/layout.tsx` nav item from greyed to `ready: true`.
-- New `/benchmark` route: a client "Run" button (same on-demand pattern as `visit-summary.tsx`)
-  posting to the existing `POST /api/benchmark/run` (T-010) — no auto-run on page load.
-- Stat tiles (patients, rows scanned, silent patients found, flags written) + a single-hue
-  horizontal bar chart of median ms for the 3 `paths` (continuous aggregate / raw table / fetch+
-  compute in TS) — the Tiger Data story T-083 needs. Run timestamp shown once a result lands.
-- Verify lint/tsc/test + a live screenshot of a real run against the Tiger Cloud seed.
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- Clinician lane's open tasks are done after T-048. Check TASKS.md for what's next across lanes.
+- No open clinician tasks. Next teammate picking up this lane should check TASKS.md for new work
+  (or help another lane — patient and pitch are both unstarted) rather than run `/pickup clinician`
+  expecting something queued.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **A live `/api/benchmark/run` call took ~60s against the shared Tiger Cloud seed when click-tested
+  (not a timeout, just real: 25 patients x 6 vitals metrics x 5 warm runs, for 3 paths, plus a
+  silence scan and a full engine re-run).** `benchmark-runner.tsx`'s "Running…" button state has no
+  client-side timeout, so it's fine to leave as-is, but a screenshot/click-test script against this
+  route needs a long poll window (~90s) or it'll report "didn't land" when it's actually still running
+  — first attempt here used a 15s window and wrongly looked stuck.
+- **The 3 benchmark paths came back nearly identical on this run (~3.3-3.5s each), not the
+  "continuous aggregate way faster" story T-083 expects to tell.** Likely per-round-trip network
+  latency to Tiger Cloud (150 queries/metric-patient pairs per path) dominating over the actual
+  query-execution difference between the approaches, rather than a bug — T-010's benchmark route
+  itself is core-owned and out of this lane's scope, so left as-is, but T-083 (pitch, rehearsing the
+  demo numbers) should re-check this against a real run before claiming a dramatic speedup; the
+  honest numbers are whatever the live run shows, not an assumed story.
+- **Recharts `LabelList` text wraps onto two lines ("3536" / "ms") instead of one if the bar chart's
+  right margin is too tight for the longest label.** First draft used `margin.right: 40` (copied from
+  the vitals charts, which don't have an end-of-bar label) — the two longest bars' "ms" suffix wrapped
+  to a second line, readable but sloppy, only visible in a screenshot. Fixed with `margin.right: 64`
+  plus an `XAxis domain={[0, (max) => Math.ceil(max * 1.15)]}` so the longest bar doesn't run flush to
+  the plot's right edge in the first place. Any future bar chart with an outside-the-bar value label
+  should budget margin for the widest label text, not just the axis.
 - **T-047: "stale-trend label on charts" only applies to vitals, not labs.** `evaluate()`/`points.ts`
   only mark the daily-series (heartbeat) contribution stale when a patient stops logging — labs aren't
   a heartbeat (`evaluate.test.ts` "does not mark lab trends stale"). So the chart annotation lives in
@@ -148,6 +163,20 @@ T-048: `/benchmark` ("Synthetic scale test") page.
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->
+- 2026-10-17: T-048 done — `/benchmark` ("Synthetic scale test") page, closing out clinician's open
+  tasks. Flipped the nav item from greyed "coming soon" to a real link. New `benchmark-runner.tsx`
+  (client, on-demand "Run" button — same convention as `visit-summary.tsx`'s Generate, here because a
+  cold run is a genuinely slow user-visible wait, not a paid call) posts to the already-built `POST
+  /api/benchmark/run` (T-010) and renders its response as-is: 4 stat tiles (patients, vitals rows
+  scanned, silent patients found, flags written) and a single-hue horizontal bar chart (dataviz skill:
+  magnitude comparison -> bar, sequential one-hue color job, direct value-at-tip labels, no legend
+  needed for one series) of median ms for the 3 OLS paths, labeled with when the run landed (the API
+  itself returns no timestamp, so it's stamped client-side on response). Verified with `npm run lint`,
+  `tsc --noEmit`, `npm test` (279 passing, no new tests — matches this lane's untested page/chart
+  convention), and three live click-tests via headless Chrome against the Tiger Cloud seed (click Run
+  -> wait for the real ~60s round trip -> screenshot, no console errors) — see Gotchas for the benchmark
+  route's real latency, the flat (not dramatically different) numbers this seed's network RTT produces
+  across the 3 paths, and a label-wrapping bug on the bar chart caught and fixed along the way.
 - 2026-10-17: T-047 done — "stopped logging" badge/filter + stale-trend chart label. `listQueue()`
   (`src/app/api/_lib/engine-db.ts`) now batches `listSilenceSql` (T-008) alongside its other queries
   and stamps `silence: Silence | null` onto each `QueuePatient`. `/queue` gets a `?silent=1` toggle

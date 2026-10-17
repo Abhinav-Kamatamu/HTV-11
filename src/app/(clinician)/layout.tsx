@@ -6,7 +6,7 @@ import { RoleSwitcher } from "@/components/role-switcher";
 
 const NAV = [
   { label: "Queue", href: "/queue", ready: true },
-  { label: "Benchmark", href: "/benchmark", ready: false },
+  { label: "Benchmark", href: "/benchmark", ready: true },
 ] as const;
 
 export default function ClinicianLayout({ children }: { children: ReactNode }) {
