@@ -4,11 +4,11 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-020 done (thresholds verified, `src/engine/sources.ts` written). Next: T-021 and the other engine tasks.
+T-020, T-021 done (sources.ts, scores.ts). Working through T-022 to T-031 in order.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-021 (engine): scores.ts (bmi, FIB-4 + band, FLI + band, CANRISK band, home BP average and check, eGFR G-category, ACR A-category) importing THRESHOLDS from sources.ts, plus scores.test.ts with known answers.
+T-022 (engine): trends.ts: OLS fit on epoch days (mirrors the SQL stats_agg), per-year slope, threshold crossing, vitals trend gate (R² >= 0.5, >= 14 points, within 3 yr), 7 vs prior 60 day baseline z-score, plus tests.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
