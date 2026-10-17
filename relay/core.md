@@ -15,7 +15,22 @@ T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + eng
 
 ## Next up
 - **T-012** (new 2026-10-17, clinician session flagged it while building T-048): batch `/api/benchmark/run`'s 3 vitals-OLS paths from a per-patient-per-metric loop (150 awaited round trips each) into one query per path, so the continuous-aggregate win shows up live at the default 25-patient demo scale instead of being swamped by network RTT. Already diagnosed, not a mystery — see Gotchas below.
-- **T-006** deploy to Vultr. `UPLOAD_DIR` files aren't served back yet (no `GET /api/uploads/:file`); decide before deploy whether uploads need to survive a container restart (volume mount) or just need to exist long enough for the demo. Registering a domain and HTTPS are external, possibly-irreversible actions (DNS, a paid registration) — confirm scope with the human before doing either.
+- **T-006** deploy to Vultr, now scoped to the **Toronto region** specifically (patient data stays
+  in Canada — see `docs/ARCHITECTURE.md`'s "Vultr usage beyond hosting", added 2026-10-17 by the
+  pitch lane at the human's request). `UPLOAD_DIR` files aren't served back yet (no
+  `GET /api/uploads/:file`); decide before deploy whether uploads need to survive a container
+  restart (volume mount) or just need to exist long enough for the demo. Registering a domain and
+  HTTPS are external, possibly-irreversible actions (DNS, a paid registration) — confirm scope
+  with the human before doing either. As of 2026-10-17 the human is still setting up the Vultr
+  account; no `VULTR_API_KEY` or CLI exists in this environment yet, and no Dockerfile exists
+  yet either — both are still needed before anything can actually deploy.
+- **T-013** (new 2026-10-17, core, depends on T-006): nightly scheduled job on the Vultr server
+  that re-runs `/api/engine/run` for every patient. Required, not optional — silence detection
+  and trend/projection aging are both functions of wall-clock time, not of any ingest event, so
+  without this job a patient who stops logging or whose projected crossing date creeps closer
+  gets no fresh flag between demos.
+- **T-014** (new 2026-10-17, core, optional): move `UPLOAD_DIR` to Vultr Object Storage if a
+  Canadian region is available there, so uploads survive a container restart.
 - Optional hardening: get Tiger's CA and move to `sslmode=verify-full` (DECISIONS 03:40).
 
 ## Gotchas

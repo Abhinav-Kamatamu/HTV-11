@@ -18,8 +18,8 @@ Check the Devpost rules for how many tracks a submission can enter and list them
 |---|---|---|
 | Best Use of Gemini API | Build with Gemini | Multimodal extraction (meals, device screens, lab PDFs), symptom coding, cited explanations |
 | Best Use of Tiger Data | Use Tiger Data (Postgres for time series) | `observations` hypertable + continuous aggregates powering every trend chart. Say this explicitly in the demo |
-| Best Use of Vultr | Run on Vultr | Host the app there |
-| Best Domain from GoDaddy Registry | Register a domain via GoDaddy Registry, claim through MLH | Register the project domain |
+| Best Use of Vultr | Run on Vultr, extra credit for using it meaningfully | Toronto-region deploy (patient data stays in Canada, not just "it's free"), plus a nightly scheduled job that re-runs the engine for every patient — silence detection and trend-projection aging are both time-based, not event-based, so they need something to run even when nobody ingests anything. Optional: Object Storage for uploads (T-014), stretch: a Serverless Inference vector store behind the why panel's citations (T-032) |
+| Best Domain from GoDaddy Registry | Register a domain via GoDaddy Registry, claim through MLH | Register the project domain, point it at the Toronto Vultr instance, HTTPS |
 | DEV Writing Challenge | Publish a write-up on DEV | Post after the event: "deterministic engine, LLM at the edges" makes a good technical story |
 
 ## Maybe

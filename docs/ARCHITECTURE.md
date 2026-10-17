@@ -15,8 +15,34 @@ in `docs/DECISIONS.md`. After hour 2, changing the stack needs the whole team.
 | AI | Gemini via `@google/genai`, model name from `GEMINI_MODEL` env var | Multimodal (photos, PDFs), MLH prize |
 | Validation | zod for every Gemini response and API body | LLM output is untrusted input |
 | Tests | Vitest for `src/engine` | The engine must be provably right |
-| Hosting | Docker on a **Vultr** instance (free credits), domain via **GoDaddy Registry** | Public URL for judges, two MLH prizes |
+| Hosting | Docker on a **Vultr** instance, **Toronto region**, domain via **GoDaddy Registry** | Public URL for judges, two MLH prizes, and a Canadian region for a health product's data, not hosting picked only because it's free |
 | Mobile | Responsive web, `<input type="file" accept="image/*" capture="environment">` | Camera on phones, no app store |
+
+## Vultr usage beyond hosting
+
+The goal is for Vultr to actually do something for the product, not just be the box the container
+happens to run on. Four pieces, in increasing order of commitment:
+
+1. **Deploy (T-006, required).** Docker container on a Toronto-region instance, HTTPS, GoDaddy
+   domain. Toronto specifically: patient data for a health product staying in Canada is a real
+   reason, not a rationalization, for the region choice.
+2. **Nightly engine run (T-013, required for the gap/trend story to actually work post-demo).**
+   A scheduled job on the same server re-runs `/api/engine/run` for every patient. Silence
+   detection (`heartbeat_agg`, RISK_ENGINE §8) and trend/projection aging (today being one day
+   further past the last reading than yesterday was) are both functions of wall-clock time, not
+   of any ingest event — without a nightly run, a patient who stops logging or whose projected
+   threshold crossing creeps closer never gets a fresh flag until something else happens to
+   trigger a recompute.
+3. **Object storage (T-014, optional).** Move `UPLOAD_DIR` to Vultr Object Storage if a Canadian
+   region is available there too, so uploaded meal/device/lab files survive a container restart
+   instead of living only in the container's filesystem.
+4. **Serverless Inference vector store (T-032, stretch, engine lane).** Embed the guideline
+   excerpts behind `src/engine/sources.ts` in a Vultr Serverless Inference vector store so the
+   why panel can show the exact guideline sentence next to a citation instead of just a name and
+   a link. Gated on confirming hackathon credits cover Serverless Inference and checking where it
+   processes data first — only the public guideline text ever gets embedded, never patient data.
+
+See `docs/PRIZES.md` for how each of these maps to the Vultr / GoDaddy prize tracks.
 
 ## Folder ownership (lanes)
 
