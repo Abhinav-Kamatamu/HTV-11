@@ -127,13 +127,20 @@
   body {
     @apply bg-background text-foreground;
   }
-  /* The sunset gradient from the home page, fixed behind every screen. Content sits on cream panels. */
+  /* The home page's sunset colours as soft blurred glows on the cream page, fixed behind every screen. */
   body::before {
     content: "";
     position: fixed;
     inset: 0;
     z-index: -1;
-    background: radial-gradient(ellipse 120% 80% at 50% 0%, oklch(0.78 0.16 55) 0%, oklch(0.6 0.16 45) 22%, oklch(0.35 0.08 290) 55%, oklch(0.2 0.045 263) 100%);
+    background:
+      radial-gradient(780px 560px at 95% 0%, oklch(0.76 0.17 52 / 0.85), transparent 72%),
+      radial-gradient(760px 640px at -5% 38%, oklch(0.5 0.11 290 / 0.55), transparent 72%),
+      radial-gradient(700px 560px at 100% 85%, oklch(0.68 0.16 45 / 0.6), transparent 72%),
+      radial-gradient(700px 520px at 5% 105%, oklch(0.32 0.07 268 / 0.55), transparent 72%),
+      var(--background);
+    filter: blur(30px);
+    transform: scale(1.1);
   }
   html {
     @apply font-sans;

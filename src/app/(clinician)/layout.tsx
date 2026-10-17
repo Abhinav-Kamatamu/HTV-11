@@ -12,7 +12,7 @@ const NAV = [
 export default function ClinicianLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-border/60 bg-card/75 backdrop-blur-xl">
         <div
           className="h-1 w-full"
           style={{ background: "linear-gradient(90deg, oklch(0.35 0.08 290), oklch(0.6 0.16 45), oklch(0.78 0.16 55))" }}
@@ -54,10 +54,8 @@ export default function ClinicianLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-3 py-4 sm:px-6 sm:py-8">
-        <div className="rounded-3xl bg-background/95 p-4 shadow-xl sm:p-8">{children}</div>
-      </main>
-      <footer className="px-4 py-5 text-center text-xs text-white/80">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:px-6 sm:py-8">{children}</main>
+      <footer className="px-4 py-5 text-center text-xs text-muted-foreground">
         All patients shown are synthetic demo data.
       </footer>
     </div>
