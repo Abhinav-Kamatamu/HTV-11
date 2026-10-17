@@ -24,11 +24,11 @@ A patient has six HbA1c results over three years: 4.65, 4.8, 4.95, 5.1, 5.25, 5.
 
 ## How it works
 
-- **Risk engine (TypeScript):** CANRISK, FIB-4, eGFR/ACR staging and STOP-Bang scores. Mann-Kendall and Sen's slope for lab trends, CUSUM for vitals. A capped points system sets severity.
-- **Gemini:** pulls data out of photos and text and writes the explanation, citing only sources from the engine's list. It never sets a score.
-- **Tiger Data:** a hypertable plus continuous aggregates (Timescale's stats and heartbeat aggregates) compute slopes and find silent patients inside the database. Measured live on 25 synthetic patients and 12,900 vitals rows (median of 5 runs): about 33 ms from the continuous aggregate, 35 ms from the raw table, 116 ms fetched and computed in TypeScript; silent-patient scan about 54 ms.
-- **Vultr Toronto:** patient data stays in Canada. A nightly job re-runs the engine for every patient.
-- All data is synthetic and labeled as such.
+- Risk engine: standard clinical scores plus trend tests on lab and home readings. It decides who gets flagged.
+- Gemini: reads photos and notes into data and writes the explanation. It never scores anyone.
+- Tiger Data: the database calculates trends and finds patients who stopped logging. On our demo data it takes about 33 ms, versus 116 ms in app code.
+- Vultr: the app runs on a Toronto server, with a nightly job that re-checks every patient.
+- All data is synthetic.
 
 ## What we learned
 
