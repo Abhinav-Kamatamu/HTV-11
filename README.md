@@ -55,8 +55,10 @@ the half-finished work before continuing.
 
 ## Run locally (once T-001 to T-004 are done)
 
+Get `DATABASE_URL` (the shared Tiger Cloud service) from team chat and put it in `.env.local`
+(see `.env.example`). There is no local database.
+
 ```bash
-docker compose up -d db
 npm install
 npm run db:migrate && npm run db:seed
 npm run dev

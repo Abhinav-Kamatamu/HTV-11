@@ -10,7 +10,7 @@ in `docs/DECISIONS.md`. After hour 2, changing the stack needs the whole team.
 | App | Next.js (App Router) + TypeScript, one repo, API in route handlers | One language, one deploy, fast UI iteration |
 | UI | Tailwind + shadcn/ui, Recharts for trend charts | Polished dashboard quickly |
 | DB | Postgres on **Tiger Data** (TimescaleDB), `observations` as a hypertable, continuous aggregates for weekly/monthly views | Time-series is the core data shape, and it is an MLH prize |
-| Local DB | `docker compose up db` with the `timescale/timescaledb-ha` image (includes `timescaledb_toolkit`) | Work offline from the cloud DB; `stats_agg` and `heartbeat_agg` need the toolkit |
+| Dev DB | The shared Tiger Cloud service (no local Docker); `DATABASE_URL` in `.env.local` | One database for the team and for judges; `stats_agg` and `heartbeat_agg` come from `timescaledb_toolkit`, confirmed there |
 | DB access | `pg` + Drizzle ORM (raw SQL for hypertable / aggregate setup) | Typed queries, SQL escape hatch |
 | AI | Gemini via `@google/genai`, model name from `GEMINI_MODEL` env var | Multimodal (photos, PDFs), MLH prize |
 | Validation | zod for every Gemini response and API body | LLM output is untrusted input |
