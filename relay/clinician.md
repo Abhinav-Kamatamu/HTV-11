@@ -8,7 +8,11 @@ T-040 done.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-041: Real queue, not mock — T-005's `GET /api/clinician/patients` / `listQueue()` is already done.
+Replace `/queue` placeholder with a server component calling `listQueue(getDb())` directly, severity
+filter via `?severity=` query param (All/Monitor/Review/Urgent/None) as plain links, row per patient
+(name, severity badge, red-flag indicator, points, top flag, flag count). Adding a small shadcn
+`Badge` to `components/ui/` for the severity pill. No click-through to patient detail yet (T-042).
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
