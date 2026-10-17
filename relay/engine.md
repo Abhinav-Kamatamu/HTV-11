@@ -8,7 +8,7 @@ T-020 done (thresholds verified, `src/engine/sources.ts` written). Next: T-021 a
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-021 (engine): scores.ts (bmi, FIB-4 + band, FLI + band, CANRISK band, home BP average and check, eGFR G-category, ACR A-category) importing THRESHOLDS from sources.ts, plus scores.test.ts with known answers.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
