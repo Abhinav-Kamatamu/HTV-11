@@ -8,7 +8,7 @@ T-001 and T-003 done (T-003 code-complete but UNRUN: no Docker/Postgres on the d
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-002 on Tiger Cloud only (no local Docker). Plan: (1) connect via DATABASE_URL from .env.local (never print it), `CREATE EXTENSION IF NOT EXISTS timescaledb_toolkit`, confirm `stats_agg` and `heartbeat_agg` exist in pg_proc; (2) update TASKS/DECISIONS/compose notes to "Tiger Cloud only"; (3) then run `npm run db:migrate` against it (T-003 verification) and fix any SQL signature that fails.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
