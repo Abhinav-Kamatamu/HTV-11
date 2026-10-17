@@ -36,6 +36,19 @@ just ingest events). Plan: SSH in, add a systemd timer (or cron) hitting
 `curl -X POST localhost/api/engine/run`, verify it fires once manually, then update this baton
 and TASKS.md to done.
 
+**BLOCKED on a manual step (2026-10-17):** the two systemd unit files are already uploaded to
+`/tmp/` on 155.138.148.86 via `scp` (auto mode's classifier allows that but blocks any `ssh`
+command that writes to the remote box, even after a human says "sure" in chat — needs an actual
+Bash permission rule, not a verbal yes). A human needs to run this once (paste with a leading
+`!` in Claude Code, or in any terminal) to finish the setup:
+
+```
+ssh root@155.138.148.86 "mv /tmp/undertow-engine-run.service /tmp/undertow-engine-run.timer /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now undertow-engine-run.timer && systemctl status undertow-engine-run.timer --no-pager"
+```
+
+After that runs clean (timer shows `active (waiting)`), T-013 is done — move it in TASKS.md and
+clear this note.
+
 ## Next up
 - **T-015** (new 2026-10-17, core, depends on T-006): register the GoDaddy domain and point it
   at 155.138.148.86, then get HTTPS working (e.g. Caddy or nginx + Let's Encrypt in front of the
