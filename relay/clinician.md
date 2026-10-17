@@ -4,32 +4,36 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-042, T-043, T-045 done (batched in one session — building the flag card for T-043 already
-produced exactly what T-045 asks for, see Gotchas).
+T-042, T-043, T-045, T-046 done.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-046: chart additions. Sen projection/crossing-band on lab charts already done (T-042), so this is:
-(1) switch `patients/[id]/page.tsx` to `loadPatientRecord` + `evaluate()` so it gets `mets`/`stopBang`
-for free; (2) new `vitals-charts.ts` + `vitals-chart.tsx` (parallel to the lab- versions, but dense
-daily OLS via `trends.ts`'s `vitalsTrend`) for home BP + weight with a CUSUM marker from
-`changepoint.ts`'s `detectChangePoints`; (3) a metabolic-syndrome 3-of-5 chip row from
-`MetsResult.criteria`; (4) a STOP-Bang score/band line. Verify with lint/tsc/test + screenshots of
-Marcus (BP step-change) and Daniel (3-of-5 mets).
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-046: chart additions — Sen crossing-range band is already drawn for lab charts (T-042), so this
-  is mainly CUSUM markers on the vitals/BP charts (none exist yet, only labs), metabolic syndrome
-  3-of-5 chips with unknowns, and a STOP-Bang line. Needs a vitals-chart component alongside
-  `lab-chart.tsx` (dense daily OLS series via `trends.ts`/`changepoint.ts`, not `labtrend.ts`).
 - T-044: visit prep summary view, reading `visitSummary` from `src/ai` (T-026).
 - T-047: "stopped logging" badge in the queue + stale-trend label on charts (`Flag.contributions[].stale`
   is already in the data from the engine; the flag card already shows "· stale" inline per row — a
   queue-level silence badge and a chart annotation are what's left).
+- T-048: `/benchmark` page — nav item already reserved and greyed "coming soon" (T-040), reads
+  `POST /api/benchmark/run` (T-010).
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **Recharts `ReferenceLine` label at `position: "top"` gets clipped by the chart's own margin.** First
+  draft of the vitals CUSUM marker (T-046) used `position: "top"` with the default `margin: { top: 8 }`
+  carried over from `lab-chart.tsx` (which only needed room for the x-axis, not a floating label) — the
+  label text rendered half off the top edge of the SVG. Fixed in `vitals-chart.tsx`: `margin.top: 20`
+  plus `position: "insideTopLeft"` (same position lab-chart's threshold-band labels use) keeps it inside
+  the plot area. Screenshot before trusting any new `ReferenceLine`/`ReferenceArea` label placement —
+  this kind of clipping doesn't show up in `tsc`/lint/tests at all.
+- **T-046 reuses `evaluate()` rather than re-deriving mets/STOP-Bang in the UI.** `getPatientSummary`
+  only returns persisted `flags` rows (text + points, not the structured `MetsResult`/`StopBangResult`),
+  so the mets chips and STOP-Bang line come from calling `loadPatientRecord(getDb(), id)` +
+  `evaluate(record)` directly in `patients/[id]/page.tsx` (same functions `runEngineForPatient` uses
+  server-side) and reading `evaluation.mets` / `evaluation.stopBang` — a second query path alongside
+  `getPatientSummary`, not a UI reimplementation of the engine's cutoffs.
 - **T-043's flag card already satisfies T-045** (one ledger row per contribution — layer, +points,
   reason, citations — plus the total labeled "priority points" next to the severity badge), so T-045
   is marked done too rather than rebuilt. `src/app/(clinician)/patients/[id]/flag-card.tsx`.
@@ -111,6 +115,22 @@ Marcus (BP step-change) and Daniel (3-of-5 mets).
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->
+- 2026-10-17: T-046 done — chart additions. Sen projection/crossing-band on lab charts was already
+  done (T-042). Added: a `vitals-charts.ts`/`vitals-chart.tsx` pair (parallel to the lab- versions,
+  but dense daily OLS series, no projection) for home systolic/diastolic BP and weight, each with a
+  dashed vertical marker per CUSUM change-point (`changepoint.ts`'s `detectChangePoints`) labeled with
+  the shift and date; a metabolic-syndrome 3-of-5 chip row (`mets-chips.tsx`) showing met/not-met/
+  unknown per criterion plus treatment overrides; a STOP-Bang line (`stopbang-line.tsx`, a plain
+  CSS 0-8 track shaded by band with a marker at the lower-bound score, not a Recharts chart). The
+  patient page now also calls `loadPatientRecord` + `evaluate()` alongside `getPatientSummary` to get
+  `mets`/`stopBang` (see Gotchas). Verified with `npm run lint`, `tsc --noEmit`, `npm test` (279
+  passing, no new tests — matches the untested `lab-charts.ts` convention for pure chart-data
+  builders), and headless-Chrome screenshots of Marcus and Daniel against the live 25-patient seed:
+  Marcus's home BP charts show "+14 mmHg ~Sep 3" / "+9 mmHg ~Sep 4" matching the SPEC §6 demo line
+  exactly, STOP-Bang shows "High · score 7 of 8" matching his flag card; Daniel shows "3 of 5 criteria
+  met, 2 unknown · meets screening threshold" with HDL/fasting glucose correctly unknown rather than
+  not-met, STOP-Bang "Low · score 2 of 8". Caught and fixed a CUSUM label clipping bug along the way
+  (see Gotchas).
 - 2026-10-17: T-042 + T-043 done (batched), T-045 done as a side effect of T-043. Patient detail
   route `/patients/[id]`: lab trend charts (Recharts, new dep) for the 4 trend-eligible metrics
   (hba1c, fpg, egfr, acr) with a Sen projection line + crossing-range band + guideline threshold

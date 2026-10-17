@@ -3,9 +3,14 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/db/client";
-import { getPatientSummary } from "@/app/api/_lib/engine-db";
+import { getPatientSummary, loadPatientRecord } from "@/app/api/_lib/engine-db";
+import { evaluate } from "@/engine/evaluate";
 import { buildLabCharts } from "./lab-charts";
 import { LabChart } from "./lab-chart";
+import { buildVitalsCharts } from "./vitals-charts";
+import { VitalsChart } from "./vitals-chart";
+import { MetsChips } from "./mets-chips";
+import { StopBangLine } from "./stopbang-line";
 import { FlagCard, type FlagView } from "./flag-card";
 
 // Patient detail (T-042/T-043): lab trend charts with Sen projection + threshold bands, and a flag
@@ -47,8 +52,10 @@ function PatientSkeleton() {
 async function PatientContent({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   const { id } = await params;
-  const summary = await getPatientSummary(getDb(), id);
+  const [summary, record] = await Promise.all([getPatientSummary(getDb(), id), loadPatientRecord(getDb(), id)]);
+  const evaluation = evaluate(record);
   const charts = buildLabCharts(summary.observations);
+  const vitalsCharts = buildVitalsCharts(summary.observations);
 
   return (
     <div className="flex flex-col gap-6">
@@ -105,6 +112,37 @@ async function PatientContent({ params }: { params: Promise<{ id: string }> }) {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold tracking-tight text-muted-foreground">Vitals</h2>
+        {vitalsCharts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No vitals observations yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {vitalsCharts.map((series) => (
+              <div key={series.metric} className="rounded-xl border border-border bg-background p-4">
+                <div className="mb-2 flex items-baseline justify-between">
+                  <h3 className="text-sm font-medium">{series.label}</h3>
+                  <span className="text-xs text-muted-foreground">{series.unit}</span>
+                </div>
+                <VitalsChart series={series} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-border bg-background p-4">
+          <MetsChips
+            criteria={evaluation.mets.criteria} metCount={evaluation.mets.metCount}
+            unknownCount={evaluation.mets.unknownCount} fires={evaluation.mets.fires}
+          />
+        </div>
+        <div className="rounded-xl border border-border bg-background p-4">
+          <StopBangLine result={evaluation.stopBang} />
+        </div>
       </section>
     </div>
   );
