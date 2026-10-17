@@ -83,8 +83,12 @@ R² gate is meaningful. These are computed by Tiger Data (§8), not in applicati
   For each daily vitals series, standardize each day against the patient's reference period (first 28 days
   of the window; floor σ so a very steady series does not trigger on noise), then
   `S⁺_t = max(0, S⁺_{t−1} + z_t − k)` and `S⁻_t = max(0, S⁻_{t−1} − z_t − k)`.
-  An alarm fires when either exceeds `h`. The change date is the last day the sum was 0 before the alarm.
-  Missing days are skipped, not zero-filled. After an alarm, re-baseline from the change date.
+  An alarm fires when either exceeds `h`. The change date is searched inside the run that ended in the alarm
+  (from the last day the sum was 0): the day after which the cumulative deviation rises most steeply.
+  Missing days are skipped, not zero-filled. After an alarm, re-baseline from the alarm day (the new level).
+  A **practical significance gate** discards alarms whose shift, measured from the alarm day over the next
+  28 days in the alarm's direction, is under 1.5 reference SDs: with the SD estimated from ~28 readings plain
+  CUSUM over-alarms on stable series (on the seed, 20 of 52 home BP series alarmed without the gate).
   Output is e.g. "home systolic shifted up ~9 mmHg around Sep 3".
 
 A trend flag fires when a metric is still inside the normal range but its projection crosses a threshold

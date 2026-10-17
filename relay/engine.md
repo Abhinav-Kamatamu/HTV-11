@@ -8,7 +8,7 @@ T-020 to T-022 done. Working through T-027, T-028, T-023, T-029, T-030, T-031, T
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-028 (engine): changepoint.ts: tabular CUSUM on daily vitals (28 day reference, k=0.5, h=5, sigma floor, missing days skipped, re-baseline after alarm), change date = last zero before alarm, shift size; tests incl. a no-change series and Patient B seed.
+T-023 (engine): symptoms.ts: fixed symptom code list with per-condition weights and red-flag marks, decayed cluster score sum(weight x severity x exp(-age_days/21)) rounded to 0.5 and capped, red-flag detection that bypasses scoring; tests incl. the nine thirst/fatigue logs of Patient A.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
