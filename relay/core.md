@@ -11,6 +11,7 @@ T-001, T-002, T-003 done and pushed (lane has nothing in flight). The app is sca
 **T-004** deterministic seed (claimed 2026-10-17).
 - Plan: `src/db/seed/` = `rng.ts` (seeded mulberry32), `patients.ts` (fixed uuids for A/B/C + urgent case), `generate.ts` (pure row generators), `index.ts` (runner); `db:seed` runs it via tsx.
 - Wipe is scoped to seed data only (`source = 'synthetic'` observations, seed patients' fixed ids/`synthetic = true`), then insert, then `refreshStatements`.
+- STATUS: code written, tested and pushed (53f57ae). Remaining: one real `npm run db:seed` against Tiger Cloud (announce to team first), spot-check row counts/slope, then mark T-004 done.
 - Metric names are snake_case (hba1c, egfr, acr, bp_systolic, ...); log in DECISIONS. Tests: determinism + Patient A HbA1c ends 5.5, 5.7, 5.9. Don't run against the shared DB until the human says so.
 
 ## Next up
