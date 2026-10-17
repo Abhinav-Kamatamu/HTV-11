@@ -63,4 +63,4 @@ Care-home mode (staff log meal-tray photos into the same engine), more risk type
 
 Everything here uses synthetic data and is a hackathon prototype, not a medical device.
 
-**Links:** [live demo](http://155.138.148.86) · [GitHub repo](https://github.com/Abhinav-Kamatamu/HTV-11) · [Devpost]
+**Links:** [live demo](https://cleanbillof.health) · [GitHub repo](https://github.com/Abhinav-Kamatamu/HTV-11) · [Devpost]

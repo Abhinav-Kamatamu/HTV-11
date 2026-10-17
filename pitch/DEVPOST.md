@@ -48,4 +48,4 @@ nextjs, typescript, react, tailwind-css, gemini, timescaledb, postgresql, drizzl
 
 ## Try it out
 
-[live demo](http://155.138.148.86), [GitHub repo](https://github.com/Abhinav-Kamatamu/HTV-11)
+[live demo](https://cleanbillof.health), [GitHub repo](https://github.com/Abhinav-Kamatamu/HTV-11)

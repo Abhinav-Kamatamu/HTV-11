@@ -37,6 +37,12 @@ T-082: done = `pitch/props/bp_monitor_141_88.png` and `sample_lab_report.pdf`. N
 <!-- scripts/handoff.sh appends entries here. -->
 - 2026-10-17 14:53 · williamJpeng · T-080/081/083 done, T-082 props made, recording pending · 0 file(s) changed since last commit
 
+- 2026-10-17, core lane note: T-015 (domain + HTTPS) is done — the live demo is now
+  `https://cleanbillof.health`, not the bare IP. Updated the live-demo link in
+  `pitch/DEVPOST.md` and `pitch/DEV_POST.md` (minimal cross-lane touch, CLAUDE.md §2). The old
+  `http://155.138.148.86` link still resolves (nothing closed port 80), but use the domain going
+  forward for the Devpost/DEV.to submissions and the live demo.
+
 - 2026-10-17 T-081 done: `pitch/DEV_POST.md` drafted (published: false). Placeholders to fill: benchmark numbers (T-083), links, cover image. Publish after the event with the DEV challenge tag.
 
 - 2026-10-17 T-080 done: `pitch/DEVPOST.md`, `pitch/architecture.svg` (export to PNG for Devpost), `pitch/DEMO_SCRIPT.md`. Rehearsal and benchmark numbers remain T-083.

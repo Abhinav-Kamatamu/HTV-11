@@ -4,19 +4,25 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-001 to T-013 done and pushed; T-014 (not applicable, see Next up) and T-015 (GoDaddy domain +
-HTTPS) are left in this lane. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb`
+T-001 to T-013, T-015 done and pushed; T-014 (not applicable, see Next up) is the only thing
+left in this lane. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb`
 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by
 running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below).
 SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP
 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
 
-**T-006 done (2026-10-17): the app is live at http://155.138.148.86** (plain HTTP, no domain —
-that's the new T-015). Vultr instance in Toronto, Ubuntu 24.04, Docker 29.9.1, container
-`undertow` on port 80, `restart unless-stopped`. Connects to the same shared Tiger Cloud DB
-everyone else uses — confirmed live (`/api/clinician/patients` returns Walter Hughes urgent as
-expected). See Gotchas for the full how-to (SSH key gotcha, Dockerfile, build-time bugs found
-and fixed, uploads bind-mount, redeploy steps) before touching this again.
+**T-015 done (2026-10-17): the app is live at https://cleanbillof.health** (and `www.`). GoDaddy
+domain, DNS A records -> 155.138.148.86, Caddy 2.11.7 on the box doing automatic HTTPS (Let's
+Encrypt via ACME HTTP-01) and reverse-proxying to the `undertow` container, which now only binds
+`127.0.0.1:3000` (moved off the public port 80 — Caddy owns 80/443 now, `ufw allow 443/tcp`
+added). End-to-end verified: `curl https://cleanbillof.health/api/clinician/patients` returns
+Walter Hughes urgent, same as before. The bare-IP `http://155.138.148.86` original T-006 deploy
+is superseded by this — see Gotchas for the setup script and the first-run cert retry quirk.
+
+T-006 done (2026-10-17): first got the app live at http://155.138.148.86 (plain HTTP, no domain
+yet). Vultr instance in Toronto, Ubuntu 24.04, Docker 29.9.1. See Gotchas for the full how-to
+(SSH key gotcha, Dockerfile, build-time bugs found and fixed, uploads bind-mount, redeploy
+steps) before touching this again.
 
 T-012 done (2026-10-17): `/api/benchmark/run`'s 3 vitals-OLS paths now each run as one batched
 query instead of 150 (one per patient×metric pair). Live-verified against Tiger Cloud: all three
@@ -30,12 +36,7 @@ T-010 built `POST /api/benchmark/run`: three vitals-OLS paths (continuous aggreg
 T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + engine + Gemini), skipping the stub phase since the engine/db wiring was already straightforward: `src/app/api/_lib/{http,engine-db,gemini,uploads}.ts` are the shared glue, one `route.ts` per endpoint. Smoke-tested live against Tiger Cloud + real Gemini (see Gotchas) — queue ranking, validate/dismiss/message, and the symptom red-flag path all confirmed working before committing.
 
 ## In flight
-**T-015**: domain registered — **cleanbillof.health** (GoDaddy, 2026-10-17). Plan: (1) human
-adds an A record at GoDaddy pointing cleanbillof.health (and www) to 155.138.148.86, (2) once
-DNS resolves, install Caddy on the Vultr box for automatic HTTPS (Let's Encrypt via ACME
-HTTP-01), reverse-proxying to the `undertow` container, which moves off the public port 80 onto
-localhost-only so Caddy can bind 80/443. Same remote-write constraint as T-013: Claude stages
-config via scp, a human runs the install/enable commands.
+(none)
 
 **T-013 done (2026-10-17):** `undertow-engine-run.timer` + `.service` on the Vultr box
 (155.138.148.86), fires nightly at 03:00 UTC + up to 5min jitter, runs
@@ -46,11 +47,6 @@ See Gotchas for the body-required bug this surfaced and why the setup needed a h
 `scp` works, moving/enabling on the box doesn't).
 
 ## Next up
-- **T-015** (new 2026-10-17, core, depends on T-006): register the GoDaddy domain and point it
-  at 155.138.148.86, then get HTTPS working (e.g. Caddy or nginx + Let's Encrypt in front of the
-  container on port 80/443, container moves to an internal port). Still deliberately not done —
-  domain registration is a paid, semi-public action, confirm with the human before registering
-  anything.
 - **T-014** (core, optional): move `UPLOAD_DIR` to Vultr Object Storage if a Canadian region is
   available there. **Researched 2026-10-17: no Canadian/Toronto region found.** Vultr's Object
   Storage FAQ and product page list Amsterdam, Atlanta, Bangalore, Chicago, Delhi NCR, London,
@@ -67,6 +63,31 @@ See Gotchas for the body-required bug this surfaced and why the setup needed a h
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **HTTPS + domain (T-015, cleanbillof.health)**
+  - DNS: GoDaddy `A` records, `@` -> 155.138.148.86 and `www` -> 155.138.148.86. The domain came
+    with GoDaddy's default parking DNS already set (an `ALIAS` for `@` and a wildcard `CNAME`
+    for `*`, both -> `pixie.porkbun.com`) — deleted the `ALIAS`, added the two `A` records, left
+    the wildcard `CNAME` alone (the explicit `www` `A` record wins over it for that one name, and
+    nothing else needs a subdomain). Propagated in well under an hour.
+  - Caddy 2.11.7 (official apt repo) does the TLS termination + reverse proxy, config at
+    `/etc/caddy/Caddyfile` on 155.138.148.86 (just `cleanbillof.health, www.cleanbillof.health {
+    reverse_proxy localhost:3000 }` — no explicit email/ACME config needed, Caddy defaults to
+    Let's Encrypt). The `undertow` container moved from `-p 80:3000` to `-p 127.0.0.1:3000:3000`
+    so Caddy can own ports 80/443 (`ufw allow 443/tcp` added; 80 stays open, Caddy needs it for
+    the ACME HTTP-01 challenge and the http->https redirect).
+  - **First `systemctl reload caddy` right after install raced its own ACME account
+    registration** — logged `"will retry"`/`"context canceled"` for the first cert attempt, not
+    a real failure. It self-healed inside ~70s on the built-in retry; just re-check
+    `curl -I https://<domain>` a minute later rather than treating that log line as broken.
+  - Same remote-write split as T-013: Claude staged `Caddyfile` + a `setup-https.sh` (installs
+    Caddy, recreates the container on the new port, opens 443, installs the Caddyfile,
+    `systemctl enable --now caddy`) to `/tmp/` on the box via `scp`; a human ran
+    `ssh root@155.138.148.86 "bash /tmp/setup-https.sh"` since `ssh` writes are blocked for
+    Claude sessions by auto mode even with verbal approval. Reuse that script (regenerate from
+    this description if it's gone from `/tmp`) if Caddy config ever needs touching again.
+  - The old bare-IP `http://155.138.148.86` link from T-006 still works directly (nothing closed
+    port 80 to it, Caddy just intercepts), but `https://cleanbillof.health` is the one to use for
+    the demo and Devpost going forward.
 - **Nightly engine cron (T-013, `undertow-engine-run.service`/`.timer` on 155.138.148.86)**
   - `POST /api/engine/run` rejects a bodyless request with 400 `"request body must be JSON"` —
     `parseJson`'s zod schema makes `patientId` optional but still requires *some* JSON body, so a
