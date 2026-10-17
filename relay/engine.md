@@ -8,7 +8,7 @@ T-020 to T-022 done. Working through T-027, T-028, T-023, T-029, T-030, T-031, T
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-023 (engine): symptoms.ts: fixed symptom code list with per-condition weights and red-flag marks, decayed cluster score sum(weight x severity x exp(-age_days/21)) rounded to 0.5 and capped, red-flag detection that bypasses scoring; tests incl. the nine thirst/fatigue logs of Patient A.
+T-029 (engine): cooccurrence.ts: metabolic syndrome 3-of-5, each criterion met / not met / unknown, treatment counts as met, sex-specific cutoffs, labs and waist within 12 months, BP from the 30 day mean, plus tests incl. Patient C (3 met, 2 unknown).
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
