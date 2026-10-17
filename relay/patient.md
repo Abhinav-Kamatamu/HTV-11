@@ -4,25 +4,23 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-060 done. T-061 through T-064 open next.
+T-060, T-061 done. T-062 through T-064 open next.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-061 (camera upload for meal + device photo, result preview):
-- New `src/app/(patient)/upload/page.tsx` + link from home, two cards (meal / device).
-- `<input type="file" accept="image/*" capture="environment">`, client POST multipart
-  `FormData` to existing `/api/ingest/meal` / `/api/ingest/device` with `patientId` from
-  `?patient=` query param (same convention as patient-switcher).
-- Preview the extraction result (items/macros or readings + confidence); manual-entry
-  fallback UI when `extraction.status === "needs_manual_entry"`.
-- Do NOT surface the `flags` the API returns to the patient (CLAUDE.md §4).
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-061: camera upload for meal + device photo with result preview (`POST /api/ingest/meal`,
-  `/api/ingest/device` already exist from core — wire the patient-side upload UI to them).
 - T-062: symptom chat with red-flag "seek care now" response (`POST /api/ingest/symptom`).
-- T-064: weekly sleep check-in, fixed form, no Gemini.
+- T-063: lab report upload (depends on T-061) — reuse `UploadCard` pattern in
+  `src/app/(patient)/upload/upload-card.tsx`, posting to `/api/ingest/labs` (multipart
+  pdf/img, already built by core). Probably needs a third card variant since labs accept
+  PDF as well as photo (`accept="image/*,application/pdf"`, no `capture` attribute).
+- T-064: weekly sleep check-in, fixed form, no Gemini. No API route exists for this
+  (not listed in ARCHITECTURE.md) — write it as a server action in this lane's folder
+  (same pattern `home/page.tsx` already uses: import `getDb`/`engine-db` directly)
+  rather than adding a route under core's `src/app/api`.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
@@ -43,6 +41,19 @@ T-061 (camera upload for meal + device photo, result preview):
 - Smoke-tested the validate-flag -> message -> patient-inbox path live against the shared Tiger
   Cloud DB on Patient B's `htn` flag, then reverted it (status back to `new`, test message
   deleted) so the demo DB is unchanged for everyone else.
+- T-061: `/api/ingest/meal` and `/api/ingest/device` return the API's own envelope directly
+  (no `{data: ...}` wrapper — see `_lib/http.ts` `ok()`), so the client just does
+  `await res.json()` and checks `res.ok`. Smoke-tested both routes end to end (synthetic
+  BP-monitor and plate images, generated with PIL) against the shared Tiger Cloud DB, then
+  deleted the exact meal/observation rows and local `uploads/*.jpg` files afterward — same
+  revert convention as the validate-flag test above. The Gemini meal extraction returned
+  confidence 0.05 on a non-photo test image, which is a good real-world exercise of the
+  `ResultPreview` "estimated from photo, review the details" badge path.
+- `Button` is `@base-ui/react`, not shadcn/radix: use `render={<Link .../>}` to compose it
+  with `next/link`, not an `asChild` prop (radix convention, doesn't exist here).
+- Only `Badge` and `Button` exist under `src/components/ui` — no `Card`. Keep using the
+  plain `rounded-xl border border-border bg-background p-4` div convention from
+  `timeline.tsx`/`messages-panel.tsx` for card-like UI instead of inventing a new primitive.
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->

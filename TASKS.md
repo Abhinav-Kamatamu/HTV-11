@@ -50,7 +50,7 @@ pushing (see CLAUDE.md §2). One `doing` task per lane at a time.
 | T-047 | clinician | "Stopped logging" badge and filter in the patient queue, stale-trend label on charts | done | T-041 T-008 |
 | T-048 | clinician | `/benchmark` page (labeled "Synthetic scale test"): run button, patient and row counts, median ms per path as a bar chart, run timestamp | done | T-040 T-010 |
 | T-060 | patient | Patient home: timeline + messages | done | T-040 |
-| T-061 | patient | Camera upload for meal + device photo with result preview | doing (patient) | T-060 |
+| T-061 | patient | Camera upload for meal + device photo with result preview | done | T-060 |
 | T-062 | patient | Symptom chat (with red-flag "seek care now" response) | todo | T-060 |
 | T-063 | patient | Lab report upload | todo | T-061 |
 | T-064 | patient | Weekly sleep check-in: three yes/no taps (snoring, tired, observed apnea) plus optional hours slept, neck circumference asked once; writes observations per RISK_ENGINE §1. Fixed form, no Gemini | todo | T-060 |

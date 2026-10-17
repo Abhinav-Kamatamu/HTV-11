@@ -1,8 +1,11 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { connection } from "next/server";
+import { Camera } from "lucide-react";
 import { getDb } from "@/db/client";
 import { getPatientSummary, listMessages } from "@/app/api/_lib/engine-db";
 import { STORY_IDS } from "@/db/seed/ids";
+import { Button } from "@/components/ui/button";
 import { buildTimeline } from "./timeline-data";
 import { Timeline } from "./timeline";
 import { MessagesPanel } from "./messages-panel";
@@ -57,12 +60,22 @@ async function HomeContent({ searchParams }: { searchParams: Promise<{ patient?:
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-lg font-semibold tracking-tight">Hi, {summary.patient.name.split(" ")[0]}</h1>
-        <p className="text-sm text-muted-foreground">
-          {age(summary.patient.dob)}y &middot; {summary.patient.sex}
-          {summary.patient.synthetic ? " · synthetic" : ""}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">Hi, {summary.patient.name.split(" ")[0]}</h1>
+          <p className="text-sm text-muted-foreground">
+            {age(summary.patient.dob)}y &middot; {summary.patient.sex}
+            {summary.patient.synthetic ? " · synthetic" : ""}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          render={
+            <Link href={`/upload?patient=${patientId}`}>
+              <Camera /> Log a meal or reading
+            </Link>
+          }
+        />
       </div>
 
       <section className="flex flex-col gap-3">
