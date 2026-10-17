@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { Camera } from "lucide-react";
+import { Camera, MessageCircle } from "lucide-react";
 import { getDb } from "@/db/client";
 import { getPatientSummary, listMessages } from "@/app/api/_lib/engine-db";
 import { STORY_IDS } from "@/db/seed/ids";
@@ -68,14 +68,25 @@ async function HomeContent({ searchParams }: { searchParams: Promise<{ patient?:
             {summary.patient.synthetic ? " · synthetic" : ""}
           </p>
         </div>
-        <Button
-          size="sm"
-          render={
-            <Link href={`/upload?patient=${patientId}`}>
-              <Camera /> Log a meal or reading
-            </Link>
-          }
-        />
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            render={
+              <Link href={`/symptoms?patient=${patientId}`}>
+                <MessageCircle /> How I&apos;m feeling
+              </Link>
+            }
+          />
+          <Button
+            size="sm"
+            render={
+              <Link href={`/upload?patient=${patientId}`}>
+                <Camera /> Log a meal or reading
+              </Link>
+            }
+          />
+        </div>
       </div>
 
       <section className="flex flex-col gap-3">
