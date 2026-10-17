@@ -4,7 +4,8 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-020 to T-022 done. Working through T-027, T-028, T-023, T-029, T-030, T-031, T-024, then T-025/T-026.
+Done: T-020 sources.ts, T-021 scores.ts, T-022 trends.ts, T-027 labtrend.ts, T-028 changepoint.ts, T-023 symptoms.ts (all in src/engine with tests, 96 tests green).
+Left in order: T-029 cooccurrence, T-030 stopbang, T-031 points (severity floors), T-024 flags, then T-025/T-026 (src/ai, Gemini). No flags exist in the DB until T-031/T-024.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
@@ -12,17 +13,22 @@ T-029 (engine): cooccurrence.ts: metabolic syndrome 3-of-5, each criterion met /
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-021 `scores.ts` (CANRISK is 3 bands only; FLI takes TG in mg/dL = mmol/L x 88.57), then T-029 and T-030, which are unblocked now.
-- T-022 / T-027 / T-028 / T-023 only need T-001 and are pure math; any of them can go in parallel.
-- T-031 is last in the engine chain and needs T-021 to T-023, T-027 to T-030.
+- T-029 `cooccurrence.ts` (claimed, no code yet), then T-030 `stopbang.ts`. Both read `THRESHOLDS.mets` / `THRESHOLDS.stopbang`.
+- T-031 `points.ts` + an `evaluate` orchestrator: a PatientRecord in (observations by metric, symptom logs, intake, silence info), Flags out. Build it so tests can feed `generateSeed()` output, no DB needed. Then T-024 `flags.ts` (Flag objects, kind = biggest contributor, ranking).
+- Then T-025/T-026 in `src/ai` (needs a Gemini key in `.env.local`; add the dependency with a DECISIONS line).
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
 - Import constants from `THRESHOLDS` in `src/engine/sources.ts`; cite by `SourceId` (`isSourceId` guards Gemini output).
-- Team decisions (DECISIONS 04:40 and 05:10): home BP is 130/80 (2025), CANRISK has a very high band (>= 43), Patient A's HbA1c is 4.65 to 5.4 twice-yearly, trend layer targets 6.0 (~2.0 yr out), never project 6.5.
+- Team decisions (DECISIONS 04:40, 05:10, 06:00): home BP is 130/80 (2025), CANRISK has a very high band (>= 43), Patient A's HbA1c is 4.65 to 5.4 twice-yearly, trend layer targets 6.0 (~2.0 yr out), never project 6.5. Sleep check-in is weekly. Patient C stays on amlodipine.
+- T-031 severity rules (RISK_ENGINE §6): bands 0-2 none, 3-5 monitor, 6-9 review, >=10 urgent; floors: a SUSTAINED diagnostic range (HbA1c>=6.5 / FPG>=7.0; eGFR<60 or ACR>=3 on the latest two results >=90 days apart; home BP avg >=130/80 over >=7 days) sets >= review; 2+ conditions in diagnostic range = urgent; red-flag symptom = patient urgent (bypass); screens (mets, STOP-Bang, CANRISK, FIB-4, FLI) never set a floor; gap-only flag = monitor. Walter Hughes must come out urgent; Patient B must stay review (his ACR 3.2 is a single result, so only htn is diagnostic); C must stay monitor.
+- Trend flags fire only for metrics with a threshold: HbA1c(6.0), FPG(6.1), eGFR(60), ACR(3), home BP(130/80). Everything else (ALT, GGT, HDL, creatinine, weight...) is chart-only. Supporting layers (changepoint, sleep 3-4) only count when the condition already has a primary contribution.
+- Module APIs already built: `labTrend/labCrossing/isRapidEgfrDecline` (labtrend.ts), `vitalsTrend/olsFit/baselineZScore` (trends.ts), `detectChangePoints` (changepoint.ts, minShiftSd 1.5 gate), `clusterScores/activeRedFlags/reportCount` (symptoms.ts), `fib4/fli/canriskBand/homeBpAverage/pairBp/egfrCategory/acrCategory` (scores.ts), shared `Pt`, `DAY_MS` in types.ts.
 - Seed contract: `intake.height_cm`, `intake.medications` (string[]), obs `hdl`, `neck_cm`, `sleep_snoring|tired|observed_apnea` (0/1, weekly, source synthetic). Patient C has no `hdl`/`fpg` rows on purpose (unknown criteria). Treatment = non-empty `medications`.
 - Preview of layers on the seed (throwaway script, not the engine): A t2d 4 monitor (+ symptoms up to 3), B ckd 8 review / htn 6 review / osa monitor, C mets 3 monitor, urgent case only monitor by points so it relies on the red-flag bypass.
-- Controls now stay under 130/80. 4 controls show a spurious n=4 HDL trend and one a GGT trend (p=0.083 to 0.096); the engine must not act on metrics without a threshold.
+- Controls stay under 130/80. A few controls show spurious n=4 lab trends (HDL, GGT, creatinine); harmless because only thresholded metrics can fire a trend.
+- Seed silent patient: num 25 Rosa Delgado (`SILENT_ID`), last log 11 days ago, active every day before. Patient B's BP step is 42 days ago; CUSUM finds it ~44 days ago (+14.5/+9.2).
+- Debug trick: vitest swallows console.log here; write results to a file in the scratchpad instead. Never run vitest with `--root /`.
 - Rapid eGFR decline rule is KDIGO 2012 (secondary-verified); KDIGO 2024 does not contain it.
 - Shell tip: do not `cd` into the scratchpad in Bash; it changes the working directory for later calls.
 
