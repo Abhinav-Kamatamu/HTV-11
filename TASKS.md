@@ -20,7 +20,7 @@ pushing (see CLAUDE.md §2). One `doing` task per lane at a time.
 | T-001 | core | Scaffold Next.js + TS + Tailwind + shadcn + Vitest + ESLint, `npm run dev/lint/test` work | done | |
 | T-002 | core | Tiger Cloud only, no local Docker: Tiger Cloud service created, `timescaledb_toolkit` 1.26.0 confirmed there (`stats_agg`, `heartbeat_agg`, `dead_ranges`, `x_intercept` present), `DATABASE_URL` shared in team chat (not git) and set in each teammate's `.env.local` | done | |
 | T-003 | core | Drizzle schema per ARCHITECTURE.md plus `flags.points int` and `flags.contributions jsonb` (RISK_ENGINE §7), migration, hypertable + continuous aggregates, `npm run db:migrate` | done | T-001 T-002 |
-| T-004 | core | Deterministic seed generator with story patients A/B/C + controls, `npm run db:seed` | todo | T-003 |
+| T-004 | core | Deterministic seed generator with story patients A/B/C + controls, `npm run db:seed` | doing (core) | T-003 |
 | T-005 | core | Ingest + clinician + flags API routes (stubs first, then real) | todo | T-003 |
 | T-006 | core | Deploy to Vultr, register domain, HTTPS | todo | T-001 |
 | T-007 | core | Tiger Data vitals math (RISK_ENGINE §8): `stats_agg(value, epoch_days)` in `obs_daily`/`obs_weekly`, SQL for slope, R² and threshold crossing (`x_intercept` or `(threshold - intercept)/slope`, record which in DECISIONS). Verify toolkit function signatures. Test: SQL output equals a pure-TS OLS on the seed vitals | todo | T-003 T-004 |
