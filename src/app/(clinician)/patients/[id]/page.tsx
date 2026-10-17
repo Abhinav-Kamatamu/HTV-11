@@ -56,7 +56,7 @@ async function PatientContent({ params }: { params: Promise<{ id: string }> }) {
   const [summary, record] = await Promise.all([getPatientSummary(getDb(), id), loadPatientRecord(getDb(), id)]);
   const evaluation = evaluate(record);
   const charts = buildLabCharts(summary.observations);
-  const vitalsCharts = buildVitalsCharts(summary.observations);
+  const vitalsCharts = buildVitalsCharts(summary.observations, evaluation.silence);
 
   return (
     <div className="flex flex-col gap-6">

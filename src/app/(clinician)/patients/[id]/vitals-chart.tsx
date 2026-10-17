@@ -15,8 +15,9 @@ function fullDate(ts: number): string {
 }
 
 export function VitalsChart({ series }: { series: VitalsChartSeries }) {
-  const { points, changePoints, unit } = series;
+  const { points, changePoints, unit, staleDays } = series;
   const rows = points.map((p) => ({ ts: p.ts, value: p.value }));
+  const lastTs = points[points.length - 1]?.ts;
 
   const values = points.map((p) => p.value);
   const yMin = Math.min(...values);
@@ -42,6 +43,18 @@ export function VitalsChart({ series }: { series: VitalsChartSeries }) {
             formatter={(value: number) => [`${value.toFixed(1)} ${unit}`, "Observed"]}
             contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }}
           />
+          {staleDays !== undefined && lastTs !== undefined && (
+            <ReferenceLine
+              x={lastTs} stroke="var(--color-muted-foreground)" strokeDasharray="4 4"
+              // Bottom corner, not top: a CUSUM change-point marker (below) always labels at
+              // insideTopLeft, and the last point — where this line sits — is often close enough
+              // to overlap an insideTopRight label on narrower chart cards.
+              label={{
+                value: `stopped logging · ${staleDays}d`,
+                position: "insideBottomRight", fill: "var(--color-muted-foreground)", fontSize: 10,
+              }}
+            />
+          )}
           {changePoints.map((cp) => (
             <ReferenceLine
               key={cp.changeTs} x={cp.changeTs} stroke={cp.direction === "up" ? "var(--color-destructive)" : "var(--color-chart-3)"}

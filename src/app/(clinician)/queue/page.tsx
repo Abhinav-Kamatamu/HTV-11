@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, WifiOff } from "lucide-react";
 import { getDb } from "@/db/client";
 import { listQueue, type QueuePatient } from "@/app/api/_lib/engine-db";
 import { Badge } from "@/components/ui/badge";
@@ -41,10 +41,19 @@ function age(dob: string): number {
   return years;
 }
 
+/** Builds a `/queue` href that keeps whichever of `severity`/`silent` isn't being changed. */
+function queueHref(params: { severity: SeverityFilter | null; silent: boolean }): string {
+  const qs = new URLSearchParams();
+  if (params.severity) qs.set("severity", params.severity);
+  if (params.silent) qs.set("silent", "1");
+  const s = qs.toString();
+  return s ? `/queue?${s}` : "/queue";
+}
+
 export default function QueuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ severity?: string }>;
+  searchParams: Promise<{ severity?: string; silent?: string }>;
 }) {
   return (
     <Suspense fallback={<QueueSkeleton />}>
@@ -69,16 +78,18 @@ function QueueSkeleton() {
 async function QueueContent({
   searchParams,
 }: {
-  searchParams: Promise<{ severity?: string }>;
+  searchParams: Promise<{ severity?: string; silent?: string }>;
 }) {
   await connection();
-  const { severity: rawSeverity } = await searchParams;
+  const { severity: rawSeverity, silent: rawSilent } = await searchParams;
   const activeFilter = FILTERS.some((f) => f.value === rawSeverity)
     ? (rawSeverity as SeverityFilter | undefined) ?? null
     : null;
+  const silentOnly = rawSilent === "1";
 
   const queue = await listQueue(getDb());
-  const filtered = activeFilter ? queue.filter((p) => severityKey(p) === activeFilter) : queue;
+  const bySeverity = activeFilter ? queue.filter((p) => severityKey(p) === activeFilter) : queue;
+  const filtered = silentOnly ? bySeverity.filter((p) => p.silence !== null) : bySeverity;
 
   return (
     <div className="flex flex-col gap-4">
@@ -89,26 +100,39 @@ async function QueueContent({
             Ranked by severity, then priority points. Red-flag symptoms always sort to the top.
           </p>
         </div>
-        <nav className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
-          {FILTERS.map((f) => {
-            const isActive = f.value === activeFilter;
-            const href = f.value ? `/queue?severity=${f.value}` : "/queue";
-            return (
-              <Link
-                key={f.label}
-                href={href}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {f.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="flex items-center gap-2">
+          <nav className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
+            {FILTERS.map((f) => {
+              const isActive = f.value === activeFilter;
+              const href = queueHref({ severity: f.value, silent: silentOnly });
+              return (
+                <Link
+                  key={f.label}
+                  href={href}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {f.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <Link
+            href={queueHref({ severity: activeFilter, silent: !silentOnly })}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+              silentOnly
+                ? "border-transparent bg-foreground text-background"
+                : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <WifiOff className="size-3.5" /> Stopped logging
+          </Link>
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -137,6 +161,14 @@ async function QueueContent({
                         {age(p.dob)}y &middot; {p.sex}
                         {p.synthetic ? " · synthetic" : ""}
                       </p>
+                      {p.silence && (
+                        <Badge
+                          variant="outline"
+                          className="mt-1 border-border bg-muted text-muted-foreground"
+                        >
+                          <WifiOff className="size-3" /> Stopped logging · {p.silence.daysSince}d
+                        </Badge>
+                      )}
                     </div>
                   </div>
 

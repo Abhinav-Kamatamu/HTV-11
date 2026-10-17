@@ -7,6 +7,7 @@ import { buildRecord, type PatientRecord, type RecordSource } from "@/engine/rec
 import type { Silence } from "@/engine/silence";
 import { activeRedFlags, SYMPTOM_PARAMS, type SymptomLogInput } from "@/engine/symptoms";
 import { DAY_MS } from "@/engine/types";
+import { listSilenceSql } from "@/db/silence";
 import { ApiError, notFound } from "./http";
 
 type Db = ReturnType<typeof getDb>;
@@ -98,6 +99,7 @@ export type QueuePatient = {
   redFlag: boolean;
   topFlag: { condition: Flag["condition"]; kind: Flag["kind"]; title: string; points: number } | null;
   flagCount: number;
+  silence: Silence | null;
 };
 
 /** Clinician queue (ARCHITECTURE.md `GET /api/clinician/patients`): ranks on persisted flags
@@ -107,11 +109,12 @@ export type QueuePatient = {
 export async function listQueue(db: Db, now = Date.now()): Promise<QueuePatient[]> {
   const redFlagSince = new Date(now - SYMPTOM_PARAMS.redFlagActiveDays * DAY_MS);
 
-  const [allPatients, openFlags, recentLogs] = await Promise.all([
+  const [allPatients, openFlags, recentLogs, silenceByPatient] = await Promise.all([
     db.select().from(patients),
     db.select().from(flags).where(ne(flags.status, "dismissed")),
     db.select({ patientId: symptomLogs.patientId, ts: symptomLogs.ts, codes: symptomLogs.codes, redFlag: symptomLogs.redFlag })
       .from(symptomLogs).where(and(eq(symptomLogs.redFlag, true), gte(symptomLogs.ts, redFlagSince))),
+    listSilenceSql(db, now),
   ]);
 
   const flagsByPatient = new Map<string, Flag[]>();
@@ -154,6 +157,7 @@ export async function listQueue(db: Db, now = Date.now()): Promise<QueuePatient[
       redFlag: isRedFlag,
       topFlag: top ? { condition: top.condition, kind: top.kind, title: top.title, points: top.points } : null,
       flagCount: fl.length,
+      silence: silenceByPatient.get(patientId) ?? null,
     };
   });
 }

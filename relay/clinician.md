@@ -4,28 +4,39 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-042, T-043, T-044, T-045, T-046 done.
+T-042 through T-047 done.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-047: "stopped logging" badge/filter + stale chart label.
-- Extend `listQueue()` (`src/app/api/_lib/engine-db.ts`) to call `listSilenceSql` (T-008,
-  `src/db/silence.ts`) and add `silence: Silence | null` to `QueuePatient`.
-- `/queue` page: badge on silent patients' rows + a filter option alongside the severity filter.
-- `lab-chart.tsx`/`vitals-chart.tsx`: a muted band/label over the trailing gap when the record's
-  `silence` is set (contributions already carry `stale`, this adds the chart-level annotation).
-- Verify lint/tsc/test + a live screenshot against a known-silent seed patient (Rosa Delgado, `...019`).
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-047: "stopped logging" badge in the queue + stale-trend label on charts (`Flag.contributions[].stale`
-  is already in the data from the engine; the flag card already shows "· stale" inline per row — a
-  queue-level silence badge and a chart annotation are what's left).
 - T-048: `/benchmark` page — nav item already reserved and greyed "coming soon" (T-040), reads
   `POST /api/benchmark/run` (T-010).
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **T-047: "stale-trend label on charts" only applies to vitals, not labs.** `evaluate()`/`points.ts`
+  only mark the daily-series (heartbeat) contribution stale when a patient stops logging — labs aren't
+  a heartbeat (`evaluate.test.ts` "does not mark lab trends stale"). So the chart annotation lives in
+  `vitals-chart.tsx`/`vitals-charts.ts` only; `lab-chart.tsx` is untouched. `buildVitalsCharts` now
+  takes an optional `silence: Silence | null` second arg (the patient's `Evaluation.silence`, same
+  value the queue's batched `listSilenceSql` produces) and stamps every returned series with
+  `staleDays`, which draws a dashed `ReferenceLine` at the series' last point.
+- **Don't put the stale-logging label at `insideTopRight` — it collides with the CUSUM change-point
+  label at `insideTopLeft`.** First draft did this and on Rosa Delgado's systolic-BP chart (which has
+  both a CUSUM marker near the right edge and a stale marker at the last point) the two label strings
+  rendered on top of each other, unreadable — this kind of thing only shows up in a screenshot, not
+  lint/tsc/tests. Fixed by moving the stale label to `insideBottomRight` in `vitals-chart.tsx`; any new
+  per-chart annotation should check it doesn't land in the same top-left/top-right corner pair the
+  CUSUM markers already use.
+- **`listQueue()` now also runs `listSilenceSql`** (T-008, `src/db/silence.ts`) as a 4th parallel query
+  and stamps `silence: Silence | null` onto every `QueuePatient` — same pattern `/api/engine/run`
+  already used for a batched silence scan across all patients. The `/queue` page adds a `?silent=1`
+  toggle (own pill, next to the severity filter group, AND'd together via `queueHref()`) and a
+  per-row `Badge` ("Stopped logging · Xd", `WifiOff` icon, neutral styling — not a severity color)
+  when `p.silence` is set. Rosa Delgado (`...019`) is the only silent patient in the seed (11 days).
 - **T-044's visit-summary route is a real Gemini call (3-6s) — the UI is on-demand, not
   auto-fetched.** `GET /api/patients/[id]/visit-summary` (new) calls the already-existing but
   previously-unused `getGeminiClient().visitSummary(...)` (src/ai/gemini.ts had the prompt/schema
@@ -131,6 +142,20 @@ T-047: "stopped logging" badge/filter + stale chart label.
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->
+- 2026-10-17: T-047 done — "stopped logging" badge/filter + stale-trend chart label. `listQueue()`
+  (`src/app/api/_lib/engine-db.ts`) now batches `listSilenceSql` (T-008) alongside its other queries
+  and stamps `silence: Silence | null` onto each `QueuePatient`. `/queue` gets a `?silent=1` toggle
+  pill (AND'd with the existing severity filter) and a neutral "Stopped logging · Xd" badge per
+  silent row. `buildVitalsCharts` takes the patient's `Evaluation.silence` and `VitalsChart` draws a
+  dashed `ReferenceLine` + label at the last logged point — labs are untouched, since only the daily
+  heartbeat series goes stale (see Gotchas). Verified with `npm run lint`, `tsc --noEmit`, `npm test`
+  (279 passing, no new tests — matches this lane's untested chart/page convention), and headless-
+  Chrome screenshots against the live 25-patient seed: `/queue?silent=1` shows only Rosa Delgado
+  (`...019`, 11 days silent) with the toggle active and the row badge; `/queue` unfiltered shows no
+  false positives on the other top rows; her patient detail page's three vitals charts (systolic BP,
+  diastolic BP, weight) each show the stale marker at the last point, no console errors. Caught and
+  fixed a label-collision bug along the way (stale label overlapping the CUSUM change-point label on
+  her systolic chart — see Gotchas) that only showed up in the screenshot, not lint/tsc/tests.
 - 2026-10-17: T-044 done — visit prep summary. New `GET /api/patients/[id]/visit-summary` route
   calls the existing `getGeminiClient().visitSummary` (src/ai/gemini.ts, T-026) with the patient's
   name and open flags from `getPatientSummary`, returning its `Extraction<VisitSummary>` untouched
