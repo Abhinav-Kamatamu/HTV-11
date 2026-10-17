@@ -30,7 +30,12 @@ T-010 built `POST /api/benchmark/run`: three vitals-OLS paths (continuous aggreg
 T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + engine + Gemini), skipping the stub phase since the engine/db wiring was already straightforward: `src/app/api/_lib/{http,engine-db,gemini,uploads}.ts` are the shared glue, one `route.ts` per endpoint. Smoke-tested live against Tiger Cloud + real Gemini (see Gotchas) — queue ranking, validate/dismiss/message, and the symptom red-flag path all confirmed working before committing.
 
 ## In flight
-(none)
+**T-015**: domain registered — **cleanbillof.health** (GoDaddy, 2026-10-17). Plan: (1) human
+adds an A record at GoDaddy pointing cleanbillof.health (and www) to 155.138.148.86, (2) once
+DNS resolves, install Caddy on the Vultr box for automatic HTTPS (Let's Encrypt via ACME
+HTTP-01), reverse-proxying to the `undertow` container, which moves off the public port 80 onto
+localhost-only so Caddy can bind 80/443. Same remote-write constraint as T-013: Claude stages
+config via scp, a human runs the install/enable commands.
 
 **T-013 done (2026-10-17):** `undertow-engine-run.timer` + `.service` on the Vultr box
 (155.138.148.86), fires nightly at 03:00 UTC + up to 5min jitter, runs
