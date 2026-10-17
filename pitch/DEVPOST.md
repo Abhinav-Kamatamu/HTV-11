@@ -2,7 +2,7 @@
 
 Each result looked normal. The trend didn't.
 
-> Paste into Devpost. Remaining placeholders: none for numbers. Optional: rerun `/benchmark` at `--scale 1000` and update the Tiger Data bullet.
+> Paste into Devpost. Remaining placeholders: none for numbers. Avoid underscores in the text: Devpost's markdown eats them (stats_agg became italic mush).
 > Tracks to enter, in order: PointClickCare Catch It Early, Healthcare Innovation, AI for Social Impact, Gemini, Tiger Data, Vultr, GoDaddy.
 
 ## Inspiration
@@ -11,14 +11,14 @@ A patient has six HbA1c results over three years: 4.65, 4.8, 4.95, 5.1, 5.25, 5.
 
 ## What it does
 
-**For the care team**
+### For the care team
 - Patients are ranked by risk trajectory, with a "stopped logging" badge.
 - Each flag has a points ledger: every signal, its points, its reading and a guideline citation.
 - Lab charts show projected threshold dates, and BP charts mark where a shift began.
 - Metabolic syndrome appears as "3 of 5 criteria, 2 unknown".
 - A clinician validates or dismisses every flag. The AI never messages a patient on its own.
 
-**For the patient**
+### For the patient
 - Snap a meal, a BP monitor screen or a lab report, or type how you feel.
 - Do a weekly sleep check-in and see a timeline and messages from the care team.
 
@@ -26,7 +26,7 @@ A patient has six HbA1c results over three years: 4.65, 4.8, 4.95, 5.1, 5.25, 5.
 
 - **Risk engine (TypeScript):** CANRISK, FIB-4, eGFR/ACR staging and STOP-Bang scores. Mann-Kendall and Sen's slope for lab trends, CUSUM for vitals. A capped points system sets severity.
 - **Gemini:** pulls data out of photos and text and writes the explanation, citing only sources from the engine's list. It never sets a score.
-- **Tiger Data:** a hypertable plus continuous aggregates (`stats_agg`, `heartbeat_agg`) compute slopes and find silent patients inside the database. Measured live on 25 synthetic patients and 12,900 vitals rows (median of 5 runs): about 33 ms from the continuous aggregate, 35 ms from the raw table, 116 ms fetched and computed in TypeScript; silent-patient scan about 54 ms.
+- **Tiger Data:** a hypertable plus continuous aggregates (Timescale's stats and heartbeat aggregates) compute slopes and find silent patients inside the database. Measured live on 25 synthetic patients and 12,900 vitals rows (median of 5 runs): about 33 ms from the continuous aggregate, 35 ms from the raw table, 116 ms fetched and computed in TypeScript; silent-patient scan about 54 ms.
 - **Vultr Toronto:** patient data stays in Canada. A nightly job re-runs the engine for every patient.
 - All data is synthetic and labeled as such.
 
