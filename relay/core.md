@@ -4,7 +4,7 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-001 to T-012 done and pushed; T-013, T-014 (Vultr-dependent) and new T-015 (GoDaddy domain +
+T-001 to T-013 done and pushed; T-014 (not applicable, see Next up) and T-015 (GoDaddy domain +
 HTTPS) are left in this lane. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb`
 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by
 running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below).
@@ -30,33 +30,15 @@ T-010 built `POST /api/benchmark/run`: three vitals-OLS paths (continuous aggreg
 T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + engine + Gemini), skipping the stub phase since the engine/db wiring was already straightforward: `src/app/api/_lib/{http,engine-db,gemini,uploads}.ts` are the shared glue, one `route.ts` per endpoint. Smoke-tested live against Tiger Cloud + real Gemini (see Gotchas) — queue ranking, validate/dismiss/message, and the symptom red-flag path all confirmed working before committing.
 
 ## In flight
-**T-013**: nightly scheduled job on the Vultr box (155.138.148.86) that re-runs
-`/api/engine/run` for every patient (wall-clock-dependent silence/trend aging needs this, not
-just ingest events). Plan: SSH in, add a systemd timer (or cron) hitting
-`curl -X POST localhost/api/engine/run`, verify it fires once manually, then update this baton
-and TASKS.md to done.
+(none)
 
-**BLOCKED on a manual step (2026-10-17):** auto mode's classifier allows `scp` to the box but
-blocks any `ssh` command that writes to it (moving a file into `/etc/systemd/system/`,
-`systemctl enable`, etc.) even after a human says "sure" in chat — needs an actual Bash
-permission rule, not a verbal yes. Timer (`undertow-engine-run.timer`, fires nightly ~03:00 UTC
-+ up to 5min jitter) is already enabled and active. But the first manual test run (`systemctl
-start undertow-engine-run.service`) failed: the unit's original `curl -sf -X POST
-http://localhost/api/engine/run` sent no body, and the route's `parseJson` (RISK_ENGINE/
-engine-db.ts) rejects that with 400 `"request body must be JSON"` even though `patientId` is
-optional — **`/api/engine/run` always needs a JSON body, `{}` is enough**, confirmed by hand:
-`curl -X POST -H "Content-Type: application/json" -d '{}' http://localhost/api/engine/run` →
-200, `{"patientsRun":25,"flagsWritten":11}`. Fixed unit file (same ExecStart +
-`-H "Content-Type: application/json" -d "{}"`) is already uploaded to `/tmp/undertow-engine-
-run.service` on the box via scp. A human needs to run this once to finish the setup:
-
-```
-ssh root@155.138.148.86 "mv /tmp/undertow-engine-run.service /etc/systemd/system/undertow-engine-run.service && systemctl daemon-reload && systemctl start undertow-engine-run.service && systemctl status undertow-engine-run.service --no-pager"
-```
-
-Confirm `Main PID` exits with status 0 (not `code=exited, status=22`). After that, T-013 is
-done — move it in TASKS.md and clear this note. The timer itself doesn't need re-touching,
-only the service file.
+**T-013 done (2026-10-17):** `undertow-engine-run.timer` + `.service` on the Vultr box
+(155.138.148.86), fires nightly at 03:00 UTC + up to 5min jitter, runs
+`curl -X POST -H "Content-Type: application/json" -d "{}" http://localhost/api/engine/run`.
+Manually triggered and confirmed: `status=0/SUCCESS`, `{"patientsRun":25,"flagsWritten":11}`.
+See Gotchas for the body-required bug this surfaced and why the setup needed a human's hands
+(remote `ssh` writes are blocked for Claude sessions by auto mode, even with verbal approval —
+`scp` works, moving/enabling on the box doesn't).
 
 ## Next up
 - **T-015** (new 2026-10-17, core, depends on T-006): register the GoDaddy domain and point it
@@ -64,13 +46,6 @@ only the service file.
   container on port 80/443, container moves to an internal port). Still deliberately not done —
   domain registration is a paid, semi-public action, confirm with the human before registering
   anything.
-- **T-013** (core, depends on T-006, now satisfied): nightly scheduled job on the Vultr server
-  that re-runs `/api/engine/run` for every patient. Required, not optional — silence detection
-  and trend/projection aging are both functions of wall-clock time, not of any ingest event, so
-  without this job a patient who stops logging or whose projected crossing date creeps closer
-  gets no fresh flag between demos. The box is up now, so this is unblocked — a cron entry or
-  systemd timer on 155.138.148.86 calling `curl -X POST localhost/api/engine/run` is the simplest
-  version.
 - **T-014** (core, optional): move `UPLOAD_DIR` to Vultr Object Storage if a Canadian region is
   available there. **Researched 2026-10-17: no Canadian/Toronto region found.** Vultr's Object
   Storage FAQ and product page list Amsterdam, Atlanta, Bangalore, Chicago, Delhi NCR, London,
@@ -87,6 +62,22 @@ only the service file.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **Nightly engine cron (T-013, `undertow-engine-run.service`/`.timer` on 155.138.148.86)**
+  - `POST /api/engine/run` rejects a bodyless request with 400 `"request body must be JSON"` —
+    `parseJson`'s zod schema makes `patientId` optional but still requires *some* JSON body, so a
+    bare `curl -X POST` (no `-d`) fails even though the route doesn't need any fields. The
+    service's `ExecStart` must be `curl -sf -X POST -H "Content-Type: application/json" -d "{}"
+    http://localhost/api/engine/run`.
+  - Claude sessions' `ssh` writes to this box are blocked by auto mode's classifier even after a
+    human approves verbally in chat ("sure" doesn't register as a Bash permission rule) — `scp`
+    to the box is allowed, but `mv`/`systemctl enable`/`systemctl start` over `ssh` are not. The
+    workaround that worked: scp the unit file to `/tmp` on the box, then have a human run the
+    `mv` + `systemctl` one-liner themselves (paste-with-`!` in Claude Code or any terminal). If
+    editing this timer/service again, expect the same split: Claude stages files via scp, human
+    runs the enabling commands.
+  - Unit files: `/etc/systemd/system/undertow-engine-run.{service,timer}`. Timer is
+    `OnCalendar=*-*-* 03:00:00` with `RandomizedDelaySec=300`, `Persistent=true`. Check it with
+    `systemctl list-timers` or `systemctl status undertow-engine-run.timer`.
 - **Vultr deploy (T-006)**
   - Server: 155.138.148.86, Vultr, Toronto region, Ubuntu 24.04, SSH as `root` with the human's
     `~/.ssh/id_ed25519` (comment "htv-11"). **Vultr's SSH-key picker only takes effect at
