@@ -9,7 +9,13 @@ produced exactly what T-045 asks for, see Gotchas).
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-046: chart additions. Sen projection/crossing-band on lab charts already done (T-042), so this is:
+(1) switch `patients/[id]/page.tsx` to `loadPatientRecord` + `evaluate()` so it gets `mets`/`stopBang`
+for free; (2) new `vitals-charts.ts` + `vitals-chart.tsx` (parallel to the lab- versions, but dense
+daily OLS via `trends.ts`'s `vitalsTrend`) for home BP + weight with a CUSUM marker from
+`changepoint.ts`'s `detectChangePoints`; (3) a metabolic-syndrome 3-of-5 chip row from
+`MetsResult.criteria`; (4) a STOP-Bang score/band line. Verify with lint/tsc/test + screenshots of
+Marcus (BP step-change) and Daniel (3-of-5 mets).
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
