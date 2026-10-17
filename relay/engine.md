@@ -4,25 +4,21 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-Done: T-020 sources.ts, T-021 scores.ts, T-022 trends.ts, T-027 labtrend.ts, T-028 changepoint.ts, T-023 symptoms.ts, T-029 cooccurrence.ts, T-030 stopbang.ts, T-031 points.ts + evaluate.ts (+ silence.ts, record.ts), T-024 flags.ts + rankPatients (all in src/engine with tests, 233 tests green repo-wide).
-Left in order: T-025/T-026 (src/ai, Gemini; needs a key in `.env.local`). Flags can now be built from an Evaluation but nothing persists them yet (T-005, core).
+Done: T-020 sources.ts, T-021 scores.ts, T-022 trends.ts, T-027 labtrend.ts, T-028 changepoint.ts, T-023 symptoms.ts, T-029 cooccurrence.ts, T-030 stopbang.ts, T-031 points.ts + evaluate.ts (+ silence.ts, record.ts), T-024 flags.ts + rankPatients, T-025 src/ai schemas.ts + gemini.ts (all with tests, 254 tests green repo-wide).
+Left in order: T-026 (explainFlag + visitSummary, src/ai, depends on T-025 done + T-024 done). Flags can now be built from an Evaluation but nothing persists them yet (T-005, core).
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-025: `src/ai/schemas.ts` (zod schemas for extractMeal/extractDevice/extractLabs/codeSymptoms, RISK_ENGINE §10)
-+ `src/ai/gemini.ts` (`@google/genai` client, model from `GEMINI_MODEL`, JSON-schema calls, validate with zod,
-retry once on failure then return a `confidence: 0` fallback). `codeSymptoms` restricted to `isSymptomCode`
-from `src/engine/symptoms.ts`. Adding `@google/genai` dep + a DECISIONS.md line. Tests mock the client
-(no live network calls in Vitest); run `npm run lint && npm test` before pushing.
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-025 `ai/gemini.ts` + zod schemas: extractMeal, extractDevice, extractLabs (incl. triglycerides, HDL), codeSymptoms. Needs a Gemini key in `.env.local` (not committed) and a dependency line in `docs/DECISIONS.md`.
-- T-026 `explainFlag` (takes a `Flag`/ledger, may not change points, cites only sourceIds already on its rows) + `visitSummary` restricted to `sources.ts`. Depends on T-024 (done) and T-025.
+- T-026 `explainFlag` (takes a `Flag`/ledger, may not change points, cites only sourceIds already on its rows) + `visitSummary` restricted to `sources.ts`. Depends on T-024 (done) and T-025 (done) — build it on `createGeminiClient`/`buildClient` from `src/ai/gemini.ts`, same retry-then-manual-entry shape, two new zod schemas in `schemas.ts`.
 - Heads-up for core: `Flag.label` (engine's `flags.ts`) has no column on the `flags` table yet (`src/db/schema.ts`) — needed before T-005 persists flags with their unconfirmed/floor label.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- T-025 (`src/ai/schemas.ts` + `gemini.ts`, 21 tests): every extractor returns `Extraction<T> = {status:"ok", data} | {status:"needs_manual_entry", confidence:0, raw, error}` (RISK_ENGINE §10's "retry once, then store the raw input with confidence 0"), never a fabricated zero-filled result — callers (ingest routes, T-005) branch on `status`. `buildClient(generate: GenerateJson)` takes the actual network call as an injected function so tests never hit the real API; `createGeminiClient()` wraps it with the real `@google/genai` SDK and throws at construction if `GEMINI_API_KEY`/`GEMINI_MODEL` are unset. Lab/device metric+unit maps (`LAB_METRIC_UNITS`, `DEVICE_METRIC_UNITS`) are a deliberate duplicate of `src/db/seed/generate.ts`'s `UNITS` (core's file, out of lane) — keep both in sync if that contract changes. `codeSymptoms` schema rejects any code not in `src/engine/symptoms.ts`'s fixed list (falls back to manual entry rather than let Gemini invent a code). zod v4's native `z.toJSONSchema()` builds the Gemini `responseJsonSchema` — no `zod-to-json-schema` dependency needed.
 - `toFlags(evaluation): Flag[]` and `rankPatients(patients: PatientFlags[])` (T-024, `src/engine/flags.ts`, 18 tests). `kind` = the ledger's top-points contribution, tie-break `threshold > trend > score > cooccurrence > symptom_cluster > sleep > changepoint > gap` (layer `symptom` maps to kind `symptom_cluster`, everything else is 1:1); `title`/`rule` are both that row's `reason` text (no separate short title exists anywhere else in the engine). `evidence`/`sourceIds` are unioned and deduplicated across every contribution in the ledger, not just the top one. `rankPatients` compares max severity, then summed points across all of a patient's flags, then the steepest `Contribution.normalizedSlope`, then falls back to `patientId` for a deterministic order; a gap-only (every flag `condition === "engagement"`) patient is forced after any patient with at least one clinical flag as a first-class check, before severity/points are even compared.
 - `Contribution.normalizedSlope` (`points.ts`, optional, `|slope per year| / threshold`) only exists on the `trend` rows built by `evaluate.ts`'s `labTrends` and `htnTrend` (not the 0-point rapid-eGFR-decline row, not vitals change-points). It exists purely so `rankPatients` can compare slope steepness across HbA1c/%, ACR/mg·mmol⁻¹ and BP/mmHg on one scale.
 - `evaluate(rec: PatientRecord): Evaluation` (T-031). `Evaluation.conditions` is one `ConditionLedger` per condition with any contribution: `{condition, contributions, points, severity | null, basis, diagnostic, label}`; `severity: null` means NO flag (filter these out), a +0.5 symptom row on ckd for Patient A is normal. `basis`: points | diagnostic_floor | rapid_decline_floor | unconfirmed_floor | multiple_diagnostic | osa_screen | gap_only. Build input with `buildRecord({patient, observations, symptomLogs}, now)`; `rec.silence` undefined = derive via `detectSilence`, null = known not silent (use for the T-008 result). CANRISK is only used if `intake.canrisk_score` exists (the seed has none).
@@ -45,6 +41,7 @@ from `src/engine/symptoms.ts`. Adding `@google/genai` dep + a DECISIONS.md line.
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->
+- 2026-10-17 · T-025 done: `src/ai/schemas.ts` (zod schemas for all four extractors, fixed lab/device metric+unit maps) and `src/ai/gemini.ts` (`@google/genai` client, `buildClient`/`createGeminiClient`, retry-once-then-manual-entry); added `@google/genai` and `zod` as real deps (DECISIONS.md); 21 new tests, 254 total green.
 - 2026-10-17 · T-024 done: `flags.ts` (`toFlags`, `rankPatients`), optional `Contribution.normalizedSlope` added in `points.ts`/`evaluate.ts` for the slope tiebreak; 18 new tests incl. seed story patients and the gap-only-never-outranks rule, 233 total green. `Flag.label` has no DB column yet (noted for core/T-005).
 - 2026-10-17 · T-031 follow-up: team decisions applied (unconfirmed-value floor at monitor with label, rapid eGFR decline floors CKD at review instead of +1, T-008 parity with `detectSilence`); B's CKD flag now review, controls still quiet; 215 tests green.
 - 2026-10-17 · T-031 done: `points.ts` (ledger types, point table, layer cap, bands), `evaluate.ts` (orchestrator, severity floors, STOP-Bang osa flag, gap/stale), `silence.ts`, `record.ts`; 76 new tests incl. all seed story patients, 207 total green.

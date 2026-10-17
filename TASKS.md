@@ -33,7 +33,7 @@ pushing (see CLAUDE.md §2). One `doing` task per lane at a time.
 | T-022 | engine | `trends.ts`: OLS slope for vitals (mirrors the SQL in T-007), baseline z-score, projected crossing helper + tests. Lab trends are T-027 | done | T-001 |
 | T-023 | engine | `symptoms.ts`: code list, weights, decayed cluster score, red-flag list + tests | done | T-001 |
 | T-024 | engine | `flags.ts`: turn the points ledger into Flag objects (severity bands, `kind` = biggest contributor), ranking function + tests | done | T-021 T-022 T-023 T-031 |
-| T-025 | engine | `ai/gemini.ts` + zod schemas: extractMeal, extractDevice, extractLabs (incl. triglycerides, HDL), codeSymptoms | doing | T-001 |
+| T-025 | engine | `ai/gemini.ts` + zod schemas: extractMeal, extractDevice, extractLabs (incl. triglycerides, HDL), codeSymptoms | done | T-001 |
 | T-026 | engine | `explainFlag` (takes the ledger, may not change points, cites only sources on the rows) + `visitSummary` restricted to sources.ts | todo | T-024 T-025 |
 | T-027 | engine | `labtrend.ts`: Mann-Kendall (exact p for n ≤ 10, tie-corrected normal above), Sen's slope and intercept, 90% slope interval, crossing date with range, gate (n ≥ 4, p < 0.10). Known-answer tests: monotone series give p = 2/n! (n=3: 0.333, n=4: 0.083, n=5: 0.017) | done | T-001 |
 | T-028 | engine | `changepoint.ts`: tabular CUSUM on daily vitals (28-day reference, k = 0.5, h = 5, skip missing days, re-baseline after alarm), returns change date and shift size + tests incl. a no-change series that must not alarm | done | T-001 |
