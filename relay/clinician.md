@@ -4,22 +4,14 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-042, T-043, T-045, T-046 done.
+T-042, T-043, T-044, T-045, T-046 done.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-044: visit prep summary view.
-- `GET /api/patients/[id]/visit-summary`: load `getPatientSummary`'s open flags + patient name,
-  call `getGeminiClient().visitSummary(...)` (src/ai/gemini.ts, already has prompt/schema — just
-  unused by any route so far), return the `Extraction<VisitSummary>` as-is (ok/needs_manual_entry).
-- Client "Visit prep" card on `patients/[id]/page.tsx`: on-demand "Generate" button (not auto-fetched
-  on page load — avoids a Gemini call on every page view/screenshot), renders the bullets + cited
-  sources (reusing `flag-card.tsx`'s `Citation`, exporting it), with a manual-entry fallback message.
-- No schema/engine changes; purely a new route + new client component.
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-044: visit prep summary view, reading `visitSummary` from `src/ai` (T-026).
 - T-047: "stopped logging" badge in the queue + stale-trend label on charts (`Flag.contributions[].stale`
   is already in the data from the engine; the flag card already shows "· stale" inline per row — a
   queue-level silence badge and a chart annotation are what's left).
@@ -28,6 +20,17 @@ T-044: visit prep summary view.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **T-044's visit-summary route is a real Gemini call (3-6s) — the UI is on-demand, not
+  auto-fetched.** `GET /api/patients/[id]/visit-summary` (new) calls the already-existing but
+  previously-unused `getGeminiClient().visitSummary(...)` (src/ai/gemini.ts had the prompt/schema
+  from T-026 but no route called it until now). The client card (`visit-summary.tsx`) only fires on
+  a "Generate" button click, so page loads and screenshot tests don't burn a Gemini call every time.
+  No chromium-cli/playwright/puppeteer installed in this repo — verified the click -> fetch -> render
+  loop with a ~60-line raw CDP script (Node's built-in `fetch`/`WebSocket`, no new deps) against
+  headless `google-chrome --remote-debugging-port`; didn't commit the script (scratchpad-only), so
+  the next session needing a browser screenshot will have to write one again or install a package.
+- **Exported `Citation` from `flag-card.tsx`** (was a private helper) so `visit-summary.tsx` can
+  reuse the same source-link styling for Gemini's `citedSourceIds` instead of duplicating it.
 - **Recharts `ReferenceLine` label at `position: "top"` gets clipped by the chart's own margin.** First
   draft of the vitals CUSUM marker (T-046) used `position: "top"` with the default `margin: { top: 8 }`
   carried over from `lab-chart.tsx` (which only needed room for the x-axis, not a floating label) — the
@@ -122,6 +125,20 @@ T-044: visit prep summary view.
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->
+- 2026-10-17: T-044 done — visit prep summary. New `GET /api/patients/[id]/visit-summary` route
+  calls the existing `getGeminiClient().visitSummary` (src/ai/gemini.ts, T-026) with the patient's
+  name and open flags from `getPatientSummary`, returning its `Extraction<VisitSummary>` untouched
+  (bullets + citedSourceIds, or a manual-entry fallback). New "Visit prep summary" card
+  (`visit-summary.tsx`) on the patient detail page, above "Open flags": an on-demand "Generate"/
+  "Regenerate" button (no auto-fetch on page load, since each call is a real Gemini request),
+  rendering the bullets as a list with citation links (reused `flag-card.tsx`'s now-exported
+  `Citation`). Verified with `npm run lint`, `tsc --noEmit`, `npm test` (279 passing, no new tests —
+  matches the untested client-component convention for this lane), and a live run against the
+  Tiger Cloud seed: curled the route directly for Priya Nair (returns her T2D-symptom bullets citing
+  Diabetes Canada 2018) and for a zero-flag patient (Ava Roy, returns a graceful "no open flags"
+  bullet, not an error); screenshotted the live click end to end in headless Chrome (button click ->
+  loading -> rendered bullets + citation, zero console errors) — see Gotchas for how, since no
+  browser-automation package is installed in this repo.
 - 2026-10-17: T-046 done — chart additions. Sen projection/crossing-band on lab charts was already
   done (T-042). Added: a `vitals-charts.ts`/`vitals-chart.tsx` pair (parallel to the lab- versions,
   but dense daily OLS series, no projection) for home systolic/diastolic BP and weight, each with a

@@ -42,7 +42,7 @@ const LAYER_LABEL: Record<Layer, string> = {
   cooccurrence: "Co-occurrence", sleep: "Sleep screen", symptom: "Symptom", gap: "Engagement",
 };
 
-function Citation({ id }: { id: SourceId }) {
+export function Citation({ id }: { id: SourceId }) {
   const source = SOURCES[id];
   return (
     <a

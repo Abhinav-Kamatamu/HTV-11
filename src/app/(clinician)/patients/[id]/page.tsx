@@ -12,6 +12,7 @@ import { VitalsChart } from "./vitals-chart";
 import { MetsChips } from "./mets-chips";
 import { StopBangLine } from "./stopbang-line";
 import { FlagCard, type FlagView } from "./flag-card";
+import { VisitSummary } from "./visit-summary";
 
 // Patient detail (T-042/T-043): lab trend charts with Sen projection + threshold bands, and a flag
 // "why" panel with the points ledger, evidence and citations. Same Cache Components pattern as
@@ -73,6 +74,8 @@ async function PatientContent({ params }: { params: Promise<{ id: string }> }) {
           </div>
         </div>
       </div>
+
+      <VisitSummary patientId={id} />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold tracking-tight text-muted-foreground">Open flags</h2>
