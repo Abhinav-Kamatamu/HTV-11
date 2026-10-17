@@ -4,26 +4,17 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-001 to T-005, T-007 to T-009 done and pushed. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below). SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
+T-001 to T-005, T-007 to T-011 done and pushed; only T-006 (deploy) is left in this lane. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below). SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
+
+T-010 built `POST /api/benchmark/run`: three vitals-OLS paths (continuous aggregate `olsFitSql`, new raw-table `olsFitRawSql`, fetch+pure-TS `olsFit`) over `bp_systolic`/`bp_diastolic`/`weight_kg`/`resting_hr`/`steps`/`sleep_hours` (RISK_ENGINE §3b — labs use Mann-Kendall/Sen, not OLS, so they're excluded), plus `listSilenceSql` and a full engine re-run, each timed as median-of-5 via `src/app/api/_lib/benchmark.ts#medianMs`. Live-smoke-tested against Tiger Cloud: all three vitals paths agreed exactly (12,900 rows each) on the 25-patient seed; see Gotchas for timings and why they're dominated by network round trips at this scale.
 
 T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + engine + Gemini), skipping the stub phase since the engine/db wiring was already straightforward: `src/app/api/_lib/{http,engine-db,gemini,uploads}.ts` are the shared glue, one `route.ts` per endpoint. Smoke-tested live against Tiger Cloud + real Gemini (see Gotchas) — queue ranking, validate/dismiss/message, and the symptom red-flag path all confirmed working before committing.
 
 ## In flight
-- **T-010** `POST /api/benchmark/run`. Plan:
-  1. `src/db/vitals.ts`: add `olsFitRawSql` — same `stats_agg`/`rollup` math as `olsFitSql` but aggregated
-     directly from `observations` (no continuous aggregate), same `OlsFit` return shape.
-  2. `src/app/api/_lib/benchmark.ts`: timing harness (run fn 5x, return median ms) used by the route.
-  3. `src/app/api/benchmark/run/route.ts`: POST, no body. Times the three vitals paths (continuous
-     aggregate / raw table / `loadPatientRecord` + pure-TS `olsFit`) over the trend-flag metrics
-     (HbA1c, fasting glucose, eGFR, home BP) for all patients, plus `listSilenceSql` standalone and a
-     full engine re-run (`runEngineForPatient` over all patients) standalone. Returns patient count,
-     row count, ms per path — nothing hard-coded.
-  4. Tests for the median helper (pure). `npm run lint && npm test` before pushing.
+(none)
 
 ## Next up
-- **T-010** benchmark page API (`POST /api/benchmark/run`) — T-007/T-008/T-009 all done, so this is unblocked (also needs engine's T-024, done). The three paths to compare are already built: `src/db/vitals.ts` (continuous aggregate), a raw-`observations` version of the same query (not yet written — needed for the "no aggregate" path), and plain TS (`src/engine/trends.ts`/`loadPatientRecord`'s fetch-and-compute). `src/db/silence.ts` is the silent-patient-scan path already.
-- **T-006** deploy to Vultr: `UPLOAD_DIR` files aren't served back yet (no `GET /api/uploads/:file`); decide before deploy whether uploads need to survive a container restart (volume mount) or just need to exist long enough for the demo.
-- **T-011 leftovers:** `hdl`, `neck_cm`, weekly `sleep_*` check-ins, a step change in Patient B's home BP (the seed BP is flat at 141/88 for now), Patient C 3 criteria met + 2 unknown, one silent patient (every seed patient currently logs through yesterday).
+- **T-006** deploy to Vultr — the only task left in the core lane. `UPLOAD_DIR` files aren't served back yet (no `GET /api/uploads/:file`); decide before deploy whether uploads need to survive a container restart (volume mount) or just need to exist long enough for the demo. Registering a domain and HTTPS are external, possibly-irreversible actions (DNS, a paid registration) — confirm scope with the human before doing either.
 - Optional hardening: get Tiger's CA and move to `sslmode=verify-full` (DECISIONS 03:40).
 
 ## Gotchas
@@ -39,6 +30,12 @@ T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + eng
   - `activeDays` is a plain `count(DISTINCT floor(epoch_day))` over a handful of candidates (those whose gap already reaches `now`), not a toolkit accessor — toolkit only answers "is there a gap", not "how many days were active".
   - `listSilenceSql(db, now)` returns `Map<patientId, Silence>` for every *currently* silent patient. `loadPatientRecord`/`runEngineForPatient` take an optional `silence` override (4th arg) so `/api/engine/run`'s "re-run all" does one batched scan instead of 25+ individual pure-TS derivations; single-patient calls (ingest routes) still use the pure fallback, which is already cheap since they already have that patient's raw observations in hand.
   - Verified via `npm run db:verify-silence` (`scripts/verify-silence-sql.ts`, not in `npm test`): 25/25 seed patients match `detectSilence` exactly.
+- **Benchmark route (T-010, `src/app/api/benchmark/run/route.ts`, `src/db/vitals.ts#olsFitRawSql`, `src/app/api/_lib/benchmark.ts`)**
+  - `olsFitRawSql` is `olsFitSql`'s math (`stats_agg`/`rollup` → `slope`/`intercept`/`determination_coeff`) run straight off `observations` with no continuous aggregate — same `OlsFit` shape, same `mapFitRow`, so no new pure-TS logic needed a test.
+  - The three vitals paths are scoped to RISK_ENGINE §3b's OLS metrics only — `bp_systolic`, `bp_diastolic`, `weight_kg`, `resting_hr`, `steps`, `sleep_hours`. HbA1c/fasting glucose/eGFR/ACR are **not** included: those are labs, scored with Mann-Kendall + Sen's slope (§3a, T-027), never computed in SQL, so they're outside this comparison.
+  - `medianMs` runs `fn` 5x and returns the middle of the sorted durations, which is also a correctness check for free: if the three paths disagree on row count across runs something is wrong. Live-verified: all three returned exactly 12,900 rows on the 25-patient seed.
+  - On the live 25-patient seed, all three vitals paths land within noise of each other (~3.4-3.5s for 150 patient×metric pairs); the silence scan is ~60ms and a full engine re-run is ~2s. At this patient count the loop is dominated by per-call network round trips to Tiger Cloud (150 awaited queries per path), not by which SQL does the computing — the continuous aggregate's real advantage would show up either batched into one query per path, or at `--scale` (T-009 found the full engine re-run take ~78s for 1000 patients vs ~2s for 25, roughly linear). Worth noting in the pitch deck rather than treating the near-equal numbers as a bug.
+  - Route writes flags via `runEngineForPatient` same as `/api/engine/run`'s re-run-all (idempotent upsert on `status = 'new'`), so calling it 5x in the demo is safe and doesn't churn flag ids.
 - **Vitals SQL (T-007, `src/db/vitals.ts`)**
   - `olsFitSql(db, {patientId, metric, aggregate?, sinceMs?})` returns the exact `OlsFit` shape from `src/engine/trends.ts`, computed via `rollup(stats)` + `slope()`/`intercept()`/`determination_coeff()`/`sum_x()`/`sum_y()`/`num_vals()` over `obs_daily` (default) or `obs_weekly`/`obs_monthly`. Reuse `trends.ts`'s own `slopePerYear`/`crossingDays` on the result rather than reimplementing — that's the point of matching the shape.
   - Crossing day = `(threshold − intercept()) / slope()`, converted from an absolute epoch day to "days from now" exactly like `crossingDays()` does (`− now/DAY_MS`); chose this over `x_intercept()` since it needs no second `value − threshold` aggregate (DECISIONS 2026-10-17).

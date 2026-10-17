@@ -69,3 +69,31 @@ export async function olsFitSql(
   `);
   return mapFitRow(result.rows[0] as FitRow | undefined);
 }
+
+/**
+ * Same `stats_agg`/`rollup` math as `olsFitSql`, but built straight from raw `observations` instead of
+ * a continuous aggregate (T-010's "raw table" path) — the aggregate Tiger Data would otherwise have
+ * pre-computed. `sinceMs` filters on `ts` directly (no bucket column here).
+ */
+export async function olsFitRawSql(
+  db: Db,
+  args: { patientId: string; metric: string; sinceMs?: number },
+): Promise<OlsFit | null> {
+  const { patientId, metric, sinceMs } = args;
+  const sinceClause = sinceMs !== undefined ? sql`AND ts >= to_timestamp(${sinceMs / 1000})` : sql``;
+  const result = await db.execute(sql`
+    SELECT
+      num_vals(agg) AS n,
+      slope(agg) AS slope_per_day,
+      intercept(agg) AS intercept,
+      determination_coeff(agg) AS r2,
+      sum_x(agg) / num_vals(agg) AS x_mean,
+      sum_y(agg) / num_vals(agg) AS y_mean
+    FROM (
+      SELECT stats_agg(value, extract(epoch FROM ts) / 86400.0) AS agg
+      FROM observations
+      WHERE patient_id = ${patientId} AND metric = ${metric} ${sinceClause}
+    ) t
+  `);
+  return mapFitRow(result.rows[0] as FitRow | undefined);
+}
