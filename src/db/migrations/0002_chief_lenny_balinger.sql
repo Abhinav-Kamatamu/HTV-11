@@ -1,0 +1,1 @@
+ALTER TABLE "flags" ALTER COLUMN "points" SET DATA TYPE real;

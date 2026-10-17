@@ -3,7 +3,6 @@ import {
   date,
   doublePrecision,
   index,
-  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -149,12 +148,17 @@ export const flags = pgTable(
     kind: flagKindEnum("kind").notNull(),
     severity: severityEnum("severity").notNull(),
     title: text("title").notNull(),
-    points: integer("points").notNull().default(0),
+    // real, not integer: the symptom layer rounds to the nearest 0.5 (points.ts `roundHalf`), so a
+    // ledger total can be fractional (T-005, found when the first real engine run hit this column).
+    points: real("points").notNull().default(0),
     contributions: jsonb("contributions").$type<unknown[]>().notNull().default([]),
     evidence: jsonb("evidence").$type<unknown[]>().notNull().default([]),
     rule: text("rule").notNull(),
     sourceIds: text("source_ids").array().notNull().default([]),
     status: flagStatusEnum("status").notNull().default("new"),
+    // Engine's ConditionLedger.label, e.g. "unconfirmed, repeat test suggested" (DECISIONS 2026-10-17,
+    // T-005). Null when the ledger set none.
+    label: text("label"),
     clinicianNote: text("clinician_note"),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   },
