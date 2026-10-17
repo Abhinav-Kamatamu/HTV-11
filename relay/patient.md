@@ -8,7 +8,14 @@ T-060 done. T-061 through T-064 open next.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-061 (camera upload for meal + device photo, result preview):
+- New `src/app/(patient)/upload/page.tsx` + link from home, two cards (meal / device).
+- `<input type="file" accept="image/*" capture="environment">`, client POST multipart
+  `FormData` to existing `/api/ingest/meal` / `/api/ingest/device` with `patientId` from
+  `?patient=` query param (same convention as patient-switcher).
+- Preview the extraction result (items/macros or readings + confidence); manual-entry
+  fallback UI when `extraction.status === "needs_manual_entry"`.
+- Do NOT surface the `flags` the API returns to the patient (CLAUDE.md §4).
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
