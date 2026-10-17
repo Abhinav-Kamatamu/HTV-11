@@ -9,7 +9,16 @@ T-001 to T-005, T-007 to T-009 done and pushed. Tiger Cloud is the only database
 T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + engine + Gemini), skipping the stub phase since the engine/db wiring was already straightforward: `src/app/api/_lib/{http,engine-db,gemini,uploads}.ts` are the shared glue, one `route.ts` per endpoint. Smoke-tested live against Tiger Cloud + real Gemini (see Gotchas) — queue ranking, validate/dismiss/message, and the symptom red-flag path all confirmed working before committing.
 
 ## In flight
-(none)
+- **T-010** `POST /api/benchmark/run`. Plan:
+  1. `src/db/vitals.ts`: add `olsFitRawSql` — same `stats_agg`/`rollup` math as `olsFitSql` but aggregated
+     directly from `observations` (no continuous aggregate), same `OlsFit` return shape.
+  2. `src/app/api/_lib/benchmark.ts`: timing harness (run fn 5x, return median ms) used by the route.
+  3. `src/app/api/benchmark/run/route.ts`: POST, no body. Times the three vitals paths (continuous
+     aggregate / raw table / `loadPatientRecord` + pure-TS `olsFit`) over the trend-flag metrics
+     (HbA1c, fasting glucose, eGFR, home BP) for all patients, plus `listSilenceSql` standalone and a
+     full engine re-run (`runEngineForPatient` over all patients) standalone. Returns patient count,
+     row count, ms per path — nothing hard-coded.
+  4. Tests for the median helper (pure). `npm run lint && npm test` before pushing.
 
 ## Next up
 - **T-010** benchmark page API (`POST /api/benchmark/run`) — T-007/T-008/T-009 all done, so this is unblocked (also needs engine's T-024, done). The three paths to compare are already built: `src/db/vitals.ts` (continuous aggregate), a raw-`observations` version of the same query (not yet written — needed for the "no aggregate" path), and plain TS (`src/engine/trends.ts`/`loadPatientRecord`'s fetch-and-compute). `src/db/silence.ts` is the silent-patient-scan path already.
