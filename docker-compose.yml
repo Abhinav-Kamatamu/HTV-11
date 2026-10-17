@@ -1,10 +1,12 @@
 services:
   db:
-    image: timescale/timescaledb:latest-pg16
+    # -ha ships timescaledb_toolkit (stats_agg, heartbeat_agg); the plain image does not.
+    image: timescale/timescaledb-ha:pg16
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: undertow
     ports: ["5432:5432"]
-    volumes: [dbdata:/var/lib/postgresql/data]
+    # -ha keeps its data under /home/postgres/pgdata, not /var/lib/postgresql/data
+    volumes: [dbdata:/home/postgres/pgdata/data]
 volumes:
   dbdata:

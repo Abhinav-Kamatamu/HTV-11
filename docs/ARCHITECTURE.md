@@ -10,7 +10,7 @@ in `docs/DECISIONS.md`. After hour 2, changing the stack needs the whole team.
 | App | Next.js (App Router) + TypeScript, one repo, API in route handlers | One language, one deploy, fast UI iteration |
 | UI | Tailwind + shadcn/ui, Recharts for trend charts | Polished dashboard quickly |
 | DB | Postgres on **Tiger Data** (TimescaleDB), `observations` as a hypertable, continuous aggregates for weekly/monthly views | Time-series is the core data shape, and it is an MLH prize |
-| Local DB | `docker compose up db` with the `timescale/timescaledb` image | Work offline from the cloud DB |
+| Local DB | `docker compose up db` with the `timescale/timescaledb-ha` image (includes `timescaledb_toolkit`) | Work offline from the cloud DB; `stats_agg` and `heartbeat_agg` need the toolkit |
 | DB access | `pg` + Drizzle ORM (raw SQL for hypertable / aggregate setup) | Typed queries, SQL escape hatch |
 | AI | Gemini via `@google/genai`, model name from `GEMINI_MODEL` env var | Multimodal (photos, PDFs), MLH prize |
 | Validation | zod for every Gemini response and API body | LLM output is untrusted input |
@@ -70,8 +70,12 @@ Engine runs on every ingest for that patient, plus a manual "re-run all" button 
 Deterministic generator (seeded RNG) so every teammate gets identical data:
 
 - ~25 patients, labs every 6 to 12 months for 3 to 5 years, 90 days of daily vitals/steps/sleep,
-  scattered meals and symptom logs
-- Story patients (match `docs/SPEC.md` §6): **A** creeping HbA1c + waist + thirst/fatigue chat,
+  scattered meals and symptom logs. Lab trends use Mann-Kendall, which needs 4 or more points, so
+  every patient meant to show a lab trend has at least that many
+- `--scale 1000` generates 1,000 patients from the same seeded RNG for the benchmark page
+  (`docs/RISK_ENGINE.md` §9); the default stays ~25
+- Story patients (match `docs/SPEC.md` §6): **A** creeping HbA1c (at least 6 points, ending 5.5, 5.7, 5.9)
+  + waist + thirst/fatigue chat,
   **B** eGFR decline ~6/yr + ACR rising + home BP ~141/88, **C** ALT/GGT/TG creeping with low FIB-4,
   plus a few clean controls and one urgent case for the top of the list
 - Every synthetic row has `source = 'synthetic'` and the UI shows a "Synthetic demo data" badge
