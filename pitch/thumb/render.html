@@ -1,41 +1,41 @@
 <!doctype html><meta charset="utf-8">
-<body style="margin:0;background:#06151a;width:1500px;height:1000px;position:relative;overflow:hidden">
+<body style="margin:0;background:#dfe8ee;width:1500px;height:1000px;position:relative;overflow:hidden">
 <canvas id="c" width="1500" height="1000" style="position:absolute;inset:0"></canvas>
-<div style="position:absolute;left:90px;bottom:118px;font:700 124px 'Helvetica Neue',Arial,sans-serif;color:#f3eee4;letter-spacing:-4px;text-shadow:0 4px 30px rgba(0,0,0,.55)">Ripple</div>
-<div style="position:absolute;left:96px;bottom:62px;font:400 36px 'Helvetica Neue',Arial,sans-serif;color:#f3eee4;opacity:.85;letter-spacing:.5px;text-shadow:0 2px 14px rgba(0,0,0,.6)">Small signals, caught early.</div>
+<div style="position:absolute;left:90px;top:56px;font:700 124px 'Helvetica Neue',Arial,sans-serif;color:#10242f;letter-spacing:-4px">Ripple</div>
+<div style="position:absolute;left:96px;top:212px;font:400 36px 'Helvetica Neue',Arial,sans-serif;color:#10242f;opacity:.7;letter-spacing:.5px">Small signals, caught early.</div>
 <script>
 const c=document.getElementById('c');const gl=c.getContext('webgl');
 const vs=`attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
 const fs=`precision highp float;uniform vec2 R;
 const vec3 SC=vec3(0.,1.45,0.);const float SR=0.26;
+const vec3 L=vec3(-0.35,0.6,0.45);
 float hgt(vec2 p){float r=length(p);
-  float A=exp(-0.55*r)*smoothstep(0.0,0.35,r)*(1.0-smoothstep(5.0,8.5,r));
-  return A*0.085*sin(r*9.0-1.2)+0.5*A*0.03*sin(r*17.0);}
+  float A=exp(-0.5*r)*smoothstep(0.0,0.35,r)*(1.0-smoothstep(5.0,8.5,r));
+  return A*0.075*sin(r*9.0-1.2)+0.5*A*0.025*sin(r*17.0);}
 vec3 env(vec3 d){
-  float t=clamp(d.y*0.5+0.5,0.,1.);
-  vec3 hor=vec3(0.1,0.22,0.25),top=vec3(0.015,0.06,0.08);
-  vec3 c=mix(hor,top,pow(clamp(d.y,0.,1.),0.45));
-  vec3 L=normalize(vec3(-0.45,0.55,0.35));
-  c+=vec3(1.0,0.78,0.5)*pow(max(dot(d,L),0.),180.)*2.2;
-  c+=vec3(1.0,0.78,0.5)*pow(max(dot(d,L),0.),12.)*0.12;
+  vec3 hor=vec3(0.86,0.91,0.94),top=vec3(0.52,0.67,0.78);
+  vec3 c=mix(hor,top,smoothstep(0.0,0.75,d.y));
+  c+=vec3(1.)*pow(max(dot(d,normalize(L)),0.),220.)*1.5;
   return c;}
 float sph(vec3 ro,vec3 rd){vec3 oc=ro-SC;float b=dot(oc,rd),c=dot(oc,oc)-SR*SR,h=b*b-c;if(h<0.)return -1.;return -b-sqrt(h);}
+vec3 waterCol(vec2 q,float h){
+  float depth=clamp(length(q)/9.,0.,1.);
+  return mix(vec3(0.16,0.36,0.46),vec3(0.28,0.5,0.6),depth)+vec3(0.05,0.08,0.08)*h*8.0;}
 vec3 sphShade(vec3 ro,vec3 rd,float t){
   vec3 p=ro+rd*t;vec3 n=normalize(p-SC);
-  float F=0.06+0.94*pow(1.0-max(dot(n,-rd),0.),3.);
+  float F=0.04+0.96*pow(1.0-max(dot(n,-rd),0.),4.);
   vec3 rf=reflect(rd,n);
-  // reflected water + env
   vec3 refl=env(rf);
-  if(rf.y<0.){float tw=-p.y/rf.y;vec2 q=(p+rf*tw).xz;refl=mix(vec3(0.03,0.14,0.17),vec3(0.14,0.3,0.33),0.4)+vec3(0.04)*sin(length(q)*9.0);}
+  if(rf.y<0.){float tw=-p.y/rf.y;vec2 q=(p+rf*tw).xz;refl=waterCol(q,hgt(q))*1.05;}
+  // refraction: a droplet flips the world, so look through it at the sky/water inverted
   vec3 rr=refract(rd,n,1.0/1.33);
-  float down=clamp(-rr.y*0.5+0.5,0.,1.);
-  vec3 inner=mix(vec3(0.1,0.3,0.32),vec3(1.0,0.7,0.28),0.45+0.55*down)*(0.85+1.1*pow(1.0-abs(dot(n,-rd)),0.8));
-  inner+=vec3(1.0,0.8,0.4)*exp(-8.0*length(n.xz-vec2(0.,0.)+vec2(0.,0.35)))*0.5;
-  inner+=vec3(1.0,0.85,0.6)*pow(max(dot(normalize(vec3(0.,-1.,0.)+n*0.2),-rd),0.),6.)*0.25;
-  vec3 col=mix(inner,refl,F);
-  vec3 L=normalize(vec3(-0.45,0.55,0.35));
-  col+=vec3(1.)*pow(max(dot(reflect(-L,n),-rd),0.),90.)*1.6;
-  col+=vec3(0.7,0.9,1.)*pow(max(dot(reflect(-normalize(vec3(0.6,0.3,0.4)),n),-rd),0.),60.)*0.5;
+  vec3 inv=normalize(vec3(rr.x,-rr.y*0.9-0.15,rr.z));
+  vec3 thru=mix(waterCol(inv.xz*3.,0.)*1.1,env(inv)*0.85,smoothstep(-0.7,0.7,inv.y));
+  float rim=pow(1.0-abs(dot(n,-rd)),2.2);
+  vec3 col=mix(thru*(0.8+0.3*rim),refl,F)+vec3(0.04,0.08,0.1)*rim;
+  col=mix(col,vec3(0.08,0.2,0.28),0.18*rim);
+  col+=vec3(1.)*pow(max(dot(reflect(-normalize(L),n),-rd),0.),110.)*1.8;
+  col+=vec3(1.)*pow(max(dot(reflect(-normalize(vec3(0.7,0.4,0.3)),n),-rd),0.),50.)*0.35;
   return col;}
 void main(){
   vec2 uv=(gl_FragCoord.xy-0.5*R)/R.y;
@@ -50,24 +50,17 @@ void main(){
     vec3 p=ro+rd*tw;
     float e=0.01;
     float h=hgt(p.xz);
-    vec3 n=normalize(vec3(-(hgt(p.xz+vec2(e,0.))-h)/e*1.0,1.,-(hgt(p.xz+vec2(0.,e))-h)/e*1.0));
+    vec3 n=normalize(vec3(-(hgt(p.xz+vec2(e,0.))-h)/e,1.,-(hgt(p.xz+vec2(0.,e))-h)/e));
     float F=0.02+0.98*pow(1.0-max(dot(n,-rd),0.),5.);
     vec3 rf=reflect(rd,n);
     vec3 refl=env(rf);
     float tr=sph(p,rf);
-    if(tr>0.){vec3 hp=p+rf*tr;vec3 nn=normalize(hp-SC);float k=0.4+0.6*clamp(-nn.y*0.5+0.5,0.,1.);refl=mix(refl,vec3(1.0,0.66,0.26)*k,0.9);}
-    float depth=clamp(length(p.xz)/9.,0.,1.);
-    vec3 base=mix(vec3(0.03,0.17,0.2),vec3(0.015,0.075,0.095),depth);
-    base+=vec3(0.05,0.12,0.12)*smoothstep(0.,0.1,h*6.0)*0.8; // crest scatter
-    col=mix(base,refl,clamp(F*1.15,0.,1.));
-    // warm glow under droplet on water
-    col+=vec3(0.9,0.5,0.15)*0.22*exp(-dot(p.xz,p.xz)*1.3);
+    if(tr>0.){vec3 hp=p+rf*tr;vec3 nn=normalize(hp-SC);refl=mix(refl,vec3(0.55,0.72,0.82),0.6)*(0.7+0.3*nn.y);}
+    col=mix(waterCol(p.xz,h),refl,clamp(F*1.1,0.,1.));
     float fog=smoothstep(6.,40.,length(p.xz));
-    col=mix(col,env(vec3(0.,0.02,-1.)),fog);
-  } else {col=env(rd)*0.9;}
-  // vignette
-  float v=length(uv*vec2(0.9,1.1));col*=1.0-0.55*smoothstep(0.35,1.0,v);
-  col=pow(col,vec3(0.92));
+    col=mix(col,vec3(0.86,0.91,0.94),fog);
+  } else {col=env(rd);}
+  float v=length(uv*vec2(0.85,1.05));col*=1.0-0.18*smoothstep(0.4,1.0,v);
   gl_FragColor=vec4(col,1.);}`;
 function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))document.title='ERR '+gl.getShaderInfoLog(o);return o;}
 const pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,vs));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(pr);gl.useProgram(pr);
