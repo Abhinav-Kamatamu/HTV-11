@@ -39,7 +39,7 @@ pushing (see CLAUDE.md §2). One `doing` task per lane at a time.
 | T-028 | engine | `changepoint.ts`: tabular CUSUM on daily vitals (28-day reference, k = 0.5, h = 5, skip missing days, re-baseline after alarm), returns change date and shift size + tests incl. a no-change series that must not alarm | done | T-001 |
 | T-029 | engine | `cooccurrence.ts`: metabolic syndrome 3-of-5 with met/not met/unknown per criterion, treatment counts as met, sex-specific cutoffs + tests | done | T-020 |
 | T-030 | engine | `stopbang.ts`: score from sleep check-in answers + record (age, sex, BMI, neck, treated BP), lower-bound handling for missing items, 90-day freshness + tests | done | T-020 |
-| T-031 | engine | `points.ts`: Contribution type, point values, per-layer cap of 4, severity bands, reason templates (engine-written, not Gemini), `gap` layer fed by T-008 and stale-trend marking + tests that the three story patients land in the SPEC §6 severities | doing | T-021 T-022 T-023 T-027 T-028 T-029 T-030 |
+| T-031 | engine | `points.ts`: Contribution type, point values, per-layer cap of 4, severity bands, reason templates (engine-written, not Gemini), `gap` layer fed by T-008 and stale-trend marking + tests that the three story patients land in the SPEC §6 severities | done | T-021 T-022 T-023 T-027 T-028 T-029 T-030 |
 | T-040 | clinician | Role switcher + layout shell | todo | T-001 |
 | T-041 | clinician | Patient queue sorted by risk, severity filter (mock data until T-005) | todo | T-040 |
 | T-042 | clinician | Patient detail: lab trend charts with projection line + threshold bands | todo | T-040 |

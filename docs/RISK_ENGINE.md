@@ -178,6 +178,7 @@ type Contribution = {
   reason: string;               // one sentence, built from a template in the engine
   evidence: { metric: string; ts: string; value: number; unit: string }[];
   sourceIds: string[];          // keys into sources.ts
+  stale?: true;                 // daily-series signal from a patient who stopped logging (gap layer, below)
 };
 ```
 
@@ -216,11 +217,29 @@ Starting point values (all in `points.ts`):
 | threshold | value in guideline monitor range / in diagnostic range | 2 / 4 |
 | score | CANRISK high / very high; FIB-4 intermediate / high; FLI ≥ 60 | 2 / 3; 1 / 4; 2 |
 | trend | gate passes and crossing ≤ 1 yr / 1 to 3 yr / moving toward threshold, no crossing in horizon | 4 / 2 / 1 |
+| trend (eGFR) | falling faster than 5 mL/min/1.73m²/yr (KDIGO 2012), added to the row above | +1 |
 | changepoint | adverse shift / adverse shift agreeing with an open trend on the same condition | 1 / 2 |
 | symptom | decayed cluster score, rounded to 0.5 | up to 3 |
 | cooccurrence | metabolic syndrome with 3 / 4 / 5 criteria met | 3 / 4 / 4 |
 | sleep | STOP-Bang 3 to 4 / 5 to 8 | 1 / 2 |
 | gap | stopped logging (§8) | 1 |
+
+Implementation notes (T-031, `src/engine/points.ts` and `evaluate.ts`):
+- **Monitor range** (threshold +2) is the guideline at-risk band: HbA1c 5.5 to 6.4, fasting glucose 5.6 to 6.9, a
+  single eGFR < 60 or ACR ≥ 3. Home BP has no monitor range, only the sustained average. On its own +2 is under
+  the monitor band, so a lone at-risk value or an unconfirmed result raises no flag until another layer joins it.
+- **Trends** only count while the latest value is still on the near side of the line (an HbA1c already ≥ 6.0 or an
+  ACR already ≥ 3 gets the threshold row instead) and never target the 6.5% diabetes line.
+- **Supporting layers** (changepoint, sleep) count only when the condition already has a primary contribution
+  (threshold, score, trend, cooccurrence or a symptom row with points). Change-points map weight to t2d and home
+  BP to htn; a BP shift earns the "agrees with trend" 2 only when the same condition has a trend row. Sleep
+  supports t2d, htn and masld, never ckd or mets.
+- A row trimmed by the layer cap stays in the ledger, possibly at 0 points, with "Counted n of m points".
+- **Stale** (gap layer): when the patient is silent, trend and changepoint rows built from daily series carry
+  `stale: true` and end with "Last reading N days ago." Lab trends are never stale; labs are not logging.
+- `detectSilence` in `silence.ts` is the pure version of the §8 heartbeat rule (≥ 7 calendar days quiet, logged on
+  ≥ 15 of the 30 days ending on the last reading; heartbeats are the daily vitals, not labs). The T-008 query
+  must agree with it, and `PatientRecord.silence` lets the database result override it.
 
 The `gap` layer is an engagement signal, not a clinical one. It never raises a condition above `monitor`
 on its own, and it also marks that patient's trends as **stale** ("last reading 12 days ago") so absence of
@@ -247,6 +266,10 @@ type Flag = {
 
 `kind` is the layer that created the flag (the biggest contributor); the other layers still appear in
 `contributions`. Persisting: the `flags` table gains `points int` and `contributions jsonb`.
+
+`evaluate(record)` (`evaluate.ts`) returns one ledger per condition (`contributions`, `points`, `severity`, `basis`,
+`diagnostic`), the active red flags, the patient severity and the silence info; T-024 turns ledgers with a
+severity into `Flag` objects. `buildRecord` (`record.ts`) builds the input from database or seed rows.
 
 Patient risk rank for the clinician list = max severity, then total points across open flags, then the
 steepest normalized slope. A `gap` flag alone never outranks a clinical flag.

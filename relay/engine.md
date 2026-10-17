@@ -4,23 +4,23 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-Done: T-020 sources.ts, T-021 scores.ts, T-022 trends.ts, T-027 labtrend.ts, T-028 changepoint.ts, T-023 symptoms.ts, T-029 cooccurrence.ts, T-030 stopbang.ts (all in src/engine with tests, 131 tests green).
-Left in order: T-031 points (severity floors), T-024 flags, then T-025/T-026 (src/ai, Gemini). No flags exist in the DB until T-031/T-024.
+Done: T-020 sources.ts, T-021 scores.ts, T-022 trends.ts, T-027 labtrend.ts, T-028 changepoint.ts, T-023 symptoms.ts, T-029 cooccurrence.ts, T-030 stopbang.ts, T-031 points.ts + evaluate.ts (+ silence.ts, record.ts) (all in src/engine with tests, 207 tests green repo-wide).
+Left in order: T-024 flags (Flag objects from the ledgers, ranking), then T-025/T-026 (src/ai, Gemini; needs a key in `.env.local`). No flags exist in the DB until T-024.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-031 `points.ts` + `evaluate` orchestrator (started 2026-10-17):
-- Contribution/Severity types, point table + per-layer cap 4 + bands as constants; PatientRecord in (obs by metric, symptom logs, intake, optional silence), per-condition ledgers out.
-- Builders per condition (t2d, ckd, htn, masld, mets, osa, engagement) reusing labtrend/trends/changepoint/scores/symptoms/cooccurrence/stopbang; severity = bands then floors; red-flag = patient-level urgent.
-- Tests on generateSeed(): A review (~7), B review, C monitor, Walter Hughes urgent, Rosa Delgado engagement monitor + stale.
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-031 `points.ts` + an `evaluate` orchestrator: a PatientRecord in (observations by metric, symptom logs, intake, silence info), Flags out. Build it so tests can feed `generateSeed()` output, no DB needed. Feed `evaluateStopBang`'s `band`/`lowerBound` into the `sleep` layer per RISK_ENGINE §6 (intermediate/high -> +1/+2, high also fires an `osa` monitor flag regardless of points). Then T-024 `flags.ts` (Flag objects, kind = biggest contributor, ranking).
+- T-024 `flags.ts`: `toFlags(evaluation): Flag[]` for every ledger with a `severity` (RISK_ENGINE §7): `kind` = layer of the biggest contributor (ties: threshold > trend > score > cooccurrence > symptom_cluster > sleep > changepoint > gap), `title` and `rule` from the top row, `evidence`/`sourceIds` unioned from the contributions, `status: "new"`. Red flags are NOT a Flag (patient-level alert; surface `evaluation.redFlags`). Then `rankPatients`: max severity, then total points across flags, then steepest normalized slope; a gap-only patient never outranks a clinical one. Use `evaluate()` on `buildRecord()` output; tests can feed `generateSeed()` (see `evaluate.test.ts`).
 - Then T-025/T-026 in `src/ai` (needs a Gemini key in `.env.local`; add the dependency with a DECISIONS line).
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- `evaluate(rec: PatientRecord): Evaluation` (T-031). `Evaluation.conditions` is one `ConditionLedger` per condition with any contribution: `{condition, contributions, points, severity | null, basis, diagnostic}`; `severity: null` means NO flag (filter these out), a +0.5 symptom row on ckd for Patient A is normal. `basis`: points | diagnostic_floor | multiple_diagnostic | osa_screen | gap_only. Build input with `buildRecord({patient, observations, symptomLogs}, now)`; `rec.silence` undefined = derive via `detectSilence`, null = known not silent (use for the T-008 result). CANRISK is only used if `intake.canrisk_score` exists (the seed has none).
+- Seed outcomes (anchor 2026-10-17): A t2d 7 review (trend 2+1, symptom 3, sleep 1); B htn 7 review (diagnostic), ckd 5 monitor, masld 4 monitor (FLI 61 + sleep), osa 2 monitor; C mets 3 monitor only (FLI 89 gives masld 2, no flag); Walter urgent (t2d/ckd/htn multiple_diagnostic + red flag); Rosa engagement monitor only (her BP trend does not pass the R2 gate, so nothing is stale on the seed; stale marking is tested with a hand-built record); all 20 controls null.
+- Calibration questions left for the team (DECISIONS 2026-10-17 engine): a lone at-risk value or single eGFR<60 is +2 = no flag; B's CKD flag is monitor (5), not review.
 - Import constants from `THRESHOLDS` in `src/engine/sources.ts`; cite by `SourceId` (`isSourceId` guards Gemini output).
 - Team decisions (DECISIONS 04:40, 05:10, 06:00): home BP is 130/80 (2025), CANRISK has a very high band (>= 43), Patient A's HbA1c is 4.65 to 5.4 twice-yearly, trend layer targets 6.0 (~2.0 yr out), never project 6.5. Sleep check-in is weekly. Patient C stays on amlodipine.
 - T-031 severity rules (RISK_ENGINE §6): bands 0-2 none, 3-5 monitor, 6-9 review, >=10 urgent; floors: a SUSTAINED diagnostic range (HbA1c>=6.5 / FPG>=7.0; eGFR<60 or ACR>=3 on the latest two results >=90 days apart; home BP avg >=130/80 over >=7 days) sets >= review; 2+ conditions in diagnostic range = urgent; red-flag symptom = patient urgent (bypass); screens (mets, STOP-Bang, CANRISK, FIB-4, FLI) never set a floor; gap-only flag = monitor. Walter Hughes must come out urgent; Patient B must stay review (his ACR 3.2 is a single result, so only htn is diagnostic); C must stay monitor.
@@ -38,5 +38,6 @@ T-031 `points.ts` + `evaluate` orchestrator (started 2026-10-17):
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->
+- 2026-10-17 · T-031 done: `points.ts` (ledger types, point table, layer cap, bands), `evaluate.ts` (orchestrator, severity floors, STOP-Bang osa flag, gap/stale), `silence.ts`, `record.ts`; 76 new tests incl. all seed story patients, 207 total green.
 - 2026-10-17 · T-030 done: `stopbang.ts` (STOP-Bang screen, lower-bound scoring for missing items), 17 tests, 131 total green.
 - 2026-10-17 · T-029 done: `cooccurrence.ts` (metabolic syndrome 3-of-5), 18 tests, 114 total green. Fixed a RISK_ENGINE/seed inconsistency on the treatment override (see DECISIONS.md).
