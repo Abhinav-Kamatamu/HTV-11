@@ -215,3 +215,5 @@ See Gotchas for the body-required bug this surfaced and why the setup needed a h
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->
+
+- **Request from pitch (2026-10-17, T-083 follow-up), needs whoever has `DATABASE_URL` in `.env.local`:** run the benchmark at scale for the Devpost. Steps: `npm run db:seed -- --scale 1000`, then `POST /api/benchmark/run` (or open `/benchmark` and click Run) and copy the patientCount, row counts and ms for the three paths + silence scan, then **reseed back to the default** (`npm run db:seed`) and re-run the engine (`POST /api/engine/run`) so the demo data returns. Paste the numbers into `relay/pitch.md` under Log (or into `pitch/DEVPOST.md`'s Tiger Data bullet). Current 25-patient numbers are already in the docs, so this is optional polish.
