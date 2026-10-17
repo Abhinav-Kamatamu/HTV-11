@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
 import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/db/client";
@@ -12,11 +14,33 @@ import { SleepCheckinForm } from "./sleep-checkin-form";
 // (RISK_ENGINE §4b) reads. Neck circumference is "asked once at intake" per §4b, so the form
 // only shows that field when the patient has no `neck_cm` observation yet.
 
-export default async function SleepCheckinPage({
+export default function SleepCheckinPage({
   searchParams,
 }: {
   searchParams: Promise<{ patient?: string }>;
 }) {
+  return (
+    <Suspense fallback={<SleepSkeleton />}>
+      <SleepCheckinContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+function SleepSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="h-16 animate-pulse rounded-xl bg-muted/50" />
+      <div className="h-64 animate-pulse rounded-xl bg-muted/50" />
+    </div>
+  );
+}
+
+// T-006: a bare DB read in an async server component with no Suspense boundary fails `next build`
+// under Cache Components/PPR ("uncached or runtime data during prerendering") — same `connection()`
+// + Suspense-wrapped-content split `home/page.tsx` already uses, caught only once a real production
+// build was run (dev mode and `npm test` don't exercise prerendering).
+async function SleepCheckinContent({ searchParams }: { searchParams: Promise<{ patient?: string }> }) {
+  await connection();
   const { patient: patientId = STORY_IDS.A } = await searchParams;
   const db = getDb();
   await requirePatient(db, patientId);

@@ -17,6 +17,16 @@ T-060 through T-064 done. Patient lane's TASKS.md board is now empty.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- Minimal cross-lane touch (2026-10-17, core, T-006 deploy): `/sleep`, `/symptoms` and `/upload`
+  pages failed a real `npm run build` (never run for this lane before — dev mode and `npm test`
+  don't exercise prerendering) with "uncached or runtime data during prerendering", because each
+  read `searchParams` (and `/sleep` also a DB row) directly in an async server component with no
+  `<Suspense>` boundary. Fixed by splitting each into a thin page + a `connection()`-gated,
+  Suspense-wrapped content component — same shape `home/page.tsx` already used, so the fix is
+  purely structural, no behavior change (smoke-tested all four pages in dev mode after). See
+  DECISIONS.md. Any new page here that reads `searchParams` or does DB/Gemini work directly
+  should follow the same split, and `npm run build` is worth running before trusting a page is
+  deploy-ready, not just `npm test`.
 - T-064: `src/app/(patient)/sleep/` (page + `sleep-checkin-form.tsx` + `actions.ts`). No API
   route exists for this (not in ARCHITECTURE.md), so it's a `"use server"` action in this lane's
   folder that imports `getDb`/`@/db/schema`/engine-db's `requirePatient`/`runEngineForPatient`

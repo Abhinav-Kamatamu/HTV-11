@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
 import { STORY_IDS } from "@/db/seed/ids";
 import { UploadCard } from "./upload-card";
@@ -7,11 +9,22 @@ import { UploadCard } from "./upload-card";
 // Posts to the existing `/api/ingest/{meal,device,labs}` routes (core, T-005); this page is just
 // the patient-side capture + preview UI.
 
-export default async function UploadPage({
+export default function UploadPage({
   searchParams,
 }: {
   searchParams: Promise<{ patient?: string }>;
 }) {
+  return (
+    <Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-muted/50" />}>
+      <UploadContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+// T-006: reading `searchParams` outside a Suspense boundary fails `next build` under Cache
+// Components/PPR ("uncached or runtime data during prerendering") — same split as `home/page.tsx`.
+async function UploadContent({ searchParams }: { searchParams: Promise<{ patient?: string }> }) {
+  await connection();
   const { patient: patientId = STORY_IDS.A } = await searchParams;
 
   return (

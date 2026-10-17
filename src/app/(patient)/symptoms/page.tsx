@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
 import { STORY_IDS } from "@/db/seed/ids";
 import { SymptomChat } from "./symptom-chat";
@@ -6,11 +8,22 @@ import { SymptomChat } from "./symptom-chat";
 // Symptom chat (T-062). Posts to the existing `/api/ingest/symptom` (core, T-005); this page is
 // just the patient-side chat UI.
 
-export default async function SymptomsPage({
+export default function SymptomsPage({
   searchParams,
 }: {
   searchParams: Promise<{ patient?: string }>;
 }) {
+  return (
+    <Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-muted/50" />}>
+      <SymptomsContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+// T-006: reading `searchParams` outside a Suspense boundary fails `next build` under Cache
+// Components/PPR ("uncached or runtime data during prerendering") — same split as `home/page.tsx`.
+async function SymptomsContent({ searchParams }: { searchParams: Promise<{ patient?: string }> }) {
+  await connection();
   const { patient: patientId = STORY_IDS.A } = await searchParams;
 
   return (
