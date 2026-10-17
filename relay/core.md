@@ -30,7 +30,11 @@ T-010 built `POST /api/benchmark/run`: three vitals-OLS paths (continuous aggreg
 T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + engine + Gemini), skipping the stub phase since the engine/db wiring was already straightforward: `src/app/api/_lib/{http,engine-db,gemini,uploads}.ts` are the shared glue, one `route.ts` per endpoint. Smoke-tested live against Tiger Cloud + real Gemini (see Gotchas) — queue ranking, validate/dismiss/message, and the symptom red-flag path all confirmed working before committing.
 
 ## In flight
-(none)
+**T-013**: nightly scheduled job on the Vultr box (155.138.148.86) that re-runs
+`/api/engine/run` for every patient (wall-clock-dependent silence/trend aging needs this, not
+just ingest events). Plan: SSH in, add a systemd timer (or cron) hitting
+`curl -X POST localhost/api/engine/run`, verify it fires once manually, then update this baton
+and TASKS.md to done.
 
 ## Next up
 - **T-015** (new 2026-10-17, core, depends on T-006): register the GoDaddy domain and point it
