@@ -8,11 +8,16 @@ T-060, T-061 done. T-062 through T-064 open next.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+- T-062: symptom chat. Add `src/app/(patient)/symptoms/page.tsx` + client `symptom-chat.tsx`,
+  following `upload/` page conventions (`?patient=` param, `STORY_IDS.A` default, plain
+  bordered-div card, no new UI primitives). Posts `{patientId, text}` to the existing
+  `POST /api/ingest/symptom` (core, already built). Show extracted codes as plain text;
+  when `redFlag` is true, render a prominent destructive banner with the returned `message`.
+  Drop `flags` from the client state entirely (never show risk to the patient, CLAUDE.md §4).
+  Link to it from `/home` or `/upload`.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-062: symptom chat with red-flag "seek care now" response (`POST /api/ingest/symptom`).
 - T-063: lab report upload (depends on T-061) — reuse `UploadCard` pattern in
   `src/app/(patient)/upload/upload-card.tsx`, posting to `/api/ingest/labs` (multipart
   pdf/img, already built by core). Probably needs a third card variant since labs accept
