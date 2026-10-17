@@ -9,7 +9,11 @@ Left in order: T-030 stopbang, T-031 points (severity floors), T-024 flags, then
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-030 `stopbang.ts`: `evaluateStopBang(input)` scores the 8 items — 3 from the weekly sleep
+check-in (snoring/tired/observed apnea, latest within 90 days), 5 from the record (pressure =
+onTreatment or homeBpHigh, BMI>35, age>50, neck>40cm, male; all strict). Each item is
+`{value, known}`; unknown items count 0 so the total is a lower bound. Band from
+THRESHOLDS.stopbang. Tests mirror cooccurrence.test.ts style.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
