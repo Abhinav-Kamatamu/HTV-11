@@ -8,7 +8,14 @@ T-042, T-043, T-045, T-046 done.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-044: visit prep summary view.
+- `GET /api/patients/[id]/visit-summary`: load `getPatientSummary`'s open flags + patient name,
+  call `getGeminiClient().visitSummary(...)` (src/ai/gemini.ts, already has prompt/schema — just
+  unused by any route so far), return the `Extraction<VisitSummary>` as-is (ok/needs_manual_entry).
+- Client "Visit prep" card on `patients/[id]/page.tsx`: on-demand "Generate" button (not auto-fetched
+  on page load — avoids a Gemini call on every page view/screenshot), renders the bullets + cited
+  sources (reusing `flag-card.tsx`'s `Citation`, exporting it), with a manual-entry fallback message.
+- No schema/engine changes; purely a new route + new client component.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->

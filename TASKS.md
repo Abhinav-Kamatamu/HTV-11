@@ -44,7 +44,7 @@ pushing (see CLAUDE.md §2). One `doing` task per lane at a time.
 | T-041 | clinician | Patient queue sorted by risk, severity filter (mock data until T-005) | done | T-040 |
 | T-042 | clinician | Patient detail: lab trend charts with projection line + threshold bands | done | T-040 |
 | T-043 | clinician | Flag card with "why" panel, evidence list, citations, validate/dismiss | done | T-042 |
-| T-044 | clinician | Visit prep summary view | todo | T-026 |
+| T-044 | clinician | Visit prep summary view | doing | T-026 |
 | T-045 | clinician | Why panel renders the points ledger: one row per contribution with layer, +points, reason, citation, and the total next to the severity. Label "priority points" | done | T-043 T-031 |
 | T-046 | clinician | Chart additions: Sen projection with crossing-range band on lab charts, CUSUM change-point marker on vitals, metabolic syndrome 3-of-5 chips with unknowns, STOP-Bang line | done | T-042 T-027 T-028 T-029 T-030 |
 | T-047 | clinician | "Stopped logging" badge and filter in the patient queue, stale-trend label on charts | todo | T-041 T-008 |
