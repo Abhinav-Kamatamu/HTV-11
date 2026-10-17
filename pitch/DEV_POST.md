@@ -5,7 +5,7 @@ tags: ai, healthcare, typescript, hackathon
 cover_image: [ ]
 ---
 
-> Paste into DEV (editor in markdown mode). Fill the `[ ]` placeholders, flip `published: true` and add the DEV challenge tag after the event. Synthetic data only; no real patient data was used.
+> Paste into DEV (markdown mode). Remaining `[ ]`: benchmark numbers (T-083), cover image, Devpost link. Swap the live-demo IP for the GoDaddy domain once T-015 lands. Then flip `published: true` and add the DEV challenge tag after the event. Synthetic data only.
 
 A patient has six HbA1c results over three years: 4.65, 4.8, 4.95, 5.1, 5.25, 5.4. Every one is below the lowest cutoff, so every one was filed as normal. Charted together, they reach prediabetes in about two years.
 
@@ -63,4 +63,4 @@ Care-home mode (staff log meal-tray photos into the same engine), more risk type
 
 Everything here uses synthetic data and is a hackathon prototype, not a medical device.
 
-**Links:** [live demo] · [GitHub repo] · [Devpost]
+**Links:** [live demo](http://155.138.148.86) · [GitHub repo](https://github.com/Abhinav-Kamatamu/HTV-11) · [Devpost]
