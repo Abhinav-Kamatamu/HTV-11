@@ -121,42 +121,44 @@ async function QueueContent({
             const sev = severityKey(p);
             const badge = SEVERITY_BADGE[sev];
             return (
-              <li
-                key={p.id}
-                className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background p-4"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <Badge variant="outline" className={badge.className}>
-                    {p.redFlag && <AlertTriangle />}
-                    {badge.label}
-                  </Badge>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{p.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {age(p.dob)}y &middot; {p.sex}
-                      {p.synthetic ? " · synthetic" : ""}
-                    </p>
+              <li key={p.id}>
+                <Link
+                  href={`/patients/${p.id}`}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background p-4 transition-colors hover:bg-muted/40"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Badge variant="outline" className={badge.className}>
+                      {p.redFlag && <AlertTriangle />}
+                      {badge.label}
+                    </Badge>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{p.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {age(p.dob)}y &middot; {p.sex}
+                        {p.synthetic ? " · synthetic" : ""}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex min-w-0 flex-1 items-center justify-end gap-6 text-right">
-                  <div className="min-w-0">
-                    {p.topFlag ? (
-                      <>
-                        <p className="truncate text-sm">{p.topFlag.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {p.flagCount} open flag{p.flagCount === 1 ? "" : "s"}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">No open flags</p>
-                    )}
+                  <div className="flex min-w-0 flex-1 items-center justify-end gap-6 text-right">
+                    <div className="min-w-0">
+                      {p.topFlag ? (
+                        <>
+                          <p className="truncate text-sm">{p.topFlag.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {p.flagCount} open flag{p.flagCount === 1 ? "" : "s"}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No open flags</p>
+                      )}
+                    </div>
+                    <div className="w-16 shrink-0">
+                      <p className="text-sm font-semibold">{p.points}</p>
+                      <p className="text-xs text-muted-foreground">points</p>
+                    </div>
                   </div>
-                  <div className="w-16 shrink-0">
-                    <p className="text-sm font-semibold">{p.points}</p>
-                    <p className="text-xs text-muted-foreground">points</p>
-                  </div>
-                </div>
+                </Link>
               </li>
             );
           })}

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { Gauge } from "lucide-react";
 import { RoleSwitcher } from "@/components/role-switcher";
@@ -43,7 +44,9 @@ export default function ClinicianLayout({ children }: { children: ReactNode }) {
           <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
             Synthetic demo data
           </span>
-          <RoleSwitcher />
+          <Suspense fallback={<div className="h-8 w-[158px] rounded-lg bg-muted/50" />}>
+            <RoleSwitcher />
+          </Suspense>
         </div>
       </header>
       <main className="flex-1 bg-muted/20 p-6">{children}</main>

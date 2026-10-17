@@ -4,25 +4,63 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-042 doing.
+T-042, T-043, T-045 done (batched in one session — building the flag card for T-043 already
+produced exactly what T-045 asks for, see Gotchas).
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-042: patient detail route `/patients/[id]` (Suspense + connection() like `/queue`), reusing
-`getPatientSummary` for data. Add a chart-data builder in `_lib/engine-db.ts` over `labtrend.ts` for
-the 4 trend-eligible lab metrics (hba1c, fpg, egfr, acr — DECISIONS 2026-10-17 06:00) with Sen
-projection line + threshold bands, plus plain line charts for the chart-only labs (alt, ast, ggt,
-platelets, hdl). Adding `recharts` as a new dep (none installed yet) — will record in DECISIONS.md.
-Wiring queue rows to link here. Then T-043 (flag "why" panel) right after, same session.
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-042: patient detail route (e.g. `src/app/(clinician)/patients/[id]/page.tsx`) with lab trend
-  charts — queue rows aren't links yet (see Gotchas), wire that click-through as part of T-042.
-- T-043 after that: flag card with "why" panel, evidence list, citations, validate/dismiss.
+- T-046: chart additions — Sen crossing-range band is already drawn for lab charts (T-042), so this
+  is mainly CUSUM markers on the vitals/BP charts (none exist yet, only labs), metabolic syndrome
+  3-of-5 chips with unknowns, and a STOP-Bang line. Needs a vitals-chart component alongside
+  `lab-chart.tsx` (dense daily OLS series via `trends.ts`/`changepoint.ts`, not `labtrend.ts`).
+- T-044: visit prep summary view, reading `visitSummary` from `src/ai` (T-026).
+- T-047: "stopped logging" badge in the queue + stale-trend label on charts (`Flag.contributions[].stale`
+  is already in the data from the engine; the flag card already shows "· stale" inline per row — a
+  queue-level silence badge and a chart annotation are what's left).
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **T-043's flag card already satisfies T-045** (one ledger row per contribution — layer, +points,
+  reason, citations — plus the total labeled "priority points" next to the severity badge), so T-045
+  is marked done too rather than rebuilt. `src/app/(clinician)/patients/[id]/flag-card.tsx`.
+- **The dynamic-route Suspense gotcha from T-041 has a second half**: a `[id]` dynamic segment forces
+  the *whole* route (including the shared layout above it) into fully dynamic rendering under
+  `cacheComponents`, which then requires every client component reading the URL — `RoleSwitcher`'s
+  `usePathname()` in `(clinician)/layout.tsx` — to sit inside its own `<Suspense>`, even though it
+  rendered fine on `/queue` (no dynamic segment there). Fixed by wrapping `<RoleSwitcher />` itself in
+  `(clinician)/layout.tsx`. Any new dynamic route under this lane will hit the same error
+  ("`usePathname()` in a Client Component outside of `<Suspense>`") the first time it's screenshotted
+  unless this stays wrapped.
+- **Chart y-domain must never include a threshold band's raw value.** ACR's guideline bands (3, 30
+  mg/mmol) are an order of magnitude above the seed's actual values (~1); first draft put bands in the
+  axis min/max calc and it flattened the real line to a flat horizontal smear. Fixed in
+  `lab-chart.tsx`: the y-domain comes only from observed + projected points, and a band outside that
+  domain is just not drawn (no squeeze-to-fit). Also needed a `YAxis` `tickFormatter` — Recharts'
+  auto-generated tick values on a non-round domain render as floating-point noise ("0000001") without
+  one.
+- **`getPatientSummary` (`_lib/engine-db.ts`) touched**: `rowToFlag` hardcodes `status: "new"` (it's
+  the engine's own pre-persistence `Flag` type, always "new" before a DB round-trip); the summary's
+  per-flag mapping now overrides it with the real `row.status` so the UI can tell a validated flag
+  from a fresh one. One-line change to a core-owned file; flagged here per CLAUDE.md §2.
+- **Didn't live-test Validate/Dismiss against the shared Tiger Cloud seed** — auto-mode blocked the
+  mutating POST as a shared-resource write, and the user chose to skip rather than grant it. The fetch
+  calls in `flag-card.tsx` were checked by hand against `/api/flags/[id]/validate`'s and `/dismiss`'s
+  zod schemas (method, URL, body shape all match), and the queue/flag-list rendering was verified live
+  against the seed, but the actual click-through was only confirmed visually (buttons render, states
+  wire up), not exercised end-to-end. **Click-test this once before the demo**, ideally on a non-story
+  patient (e.g. Rosa Delgado, id `...019`, has one `engagement` flag) and restore it afterward with
+  `POST /api/engine/run { "patientId": "..." }` — re-running the engine only ever touches `status =
+  'new'` rows, so it will not resurrect a row you validated, only add a fresh one alongside it.
+- Added `src/components/ui/` has no new components this round; flag-card/lab-chart reuse `Badge` and
+  `Button` as-is. New non-`ui/` files: `patients/[id]/page.tsx`, `lab-charts.ts` (pure chart-data
+  builder over `labtrend.ts`), `lab-chart.tsx` (Recharts, client), `flag-card.tsx` (client).
+- Added `recharts` (`^3.2.1`, DECISIONS.md) — first chart lib in the repo. Dark mode wasn't verified
+  for the new charts (colors are CSS custom properties with dark variants already in `globals.css`, so
+  it should follow automatically, but nobody has looked at it with the eye).
 - **T-041 built against the real `/api/clinician/patients` data, not mock data** — T-005 (the
   ranked-list API / `listQueue()` in `src/app/api/_lib/engine-db.ts`) was already done by the time
   this task started, so the task text ("mock data until T-005") was stale. The page imports
@@ -68,6 +106,21 @@ Wiring queue rows to link here. Then T-043 (flag "why" panel) right after, same 
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->
+- 2026-10-17: T-042 + T-043 done (batched), T-045 done as a side effect of T-043. Patient detail
+  route `/patients/[id]`: lab trend charts (Recharts, new dep) for the 4 trend-eligible metrics
+  (hba1c, fpg, egfr, acr) with a Sen projection line + crossing-range band + guideline threshold
+  lines, plus plain charts for the chart-only labs (alt, ast, ggt, platelets, hdl). Flag cards with
+  the full points-ledger "why" panel (layer, +points, reason, citations, stale/unconfirmed markers),
+  total labeled "priority points", and working Validate/Dismiss (note/reason field, calls the
+  existing API routes, `router.refresh()`). Queue rows now link to the detail page. Hit and fixed a
+  second half of the T-041 Cache Components gotcha (dynamic `[id]` route forces the shared layout's
+  `RoleSwitcher` to need its own `<Suspense>`) and a chart bug (threshold bands outside the data range
+  were stretching the y-axis and flattening the real line — now only drawn when in-domain). Verified
+  with `npm run lint`, `tsc --noEmit`, `npm test` (279 passing), and headless-Chrome screenshots of
+  all three story patients (Priya/Marcus/Daniel) against the live 25-patient seed — no console
+  errors, numbers match the story (Priya's HbA1c crossing in ~24mo, Marcus's eGFR crossing in ~26mo).
+  Did not live-click Validate/Dismiss against the shared DB (see Gotchas) — do that once before the
+  demo.
 - 2026-10-17: T-041 done — `/queue` now reads the real `listQueue()`/`/api/clinician/patients`
   ranking (T-005 was already built, so this skipped the planned mock-data phase), with a
   `?severity=` filter (All/Urgent/Review/Monitor/None) and a new `Badge` component. Hit and fixed a

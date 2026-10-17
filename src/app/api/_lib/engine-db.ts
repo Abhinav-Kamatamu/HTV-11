@@ -189,7 +189,9 @@ export async function getPatientSummary(db: Db, patientId: string) {
   ]);
   return {
     patient,
-    flags: openFlags.map((row) => ({ id: row.id, createdAt: row.createdAt, ...rowToFlag(row) })),
+    // rowToFlag's `status` is always the engine's own pre-persistence literal ("new"); override it with
+    // the real column so callers can tell a validated flag from a fresh one (T-043 why panel).
+    flags: openFlags.map((row) => ({ id: row.id, createdAt: row.createdAt, ...rowToFlag(row), status: row.status })),
     meals: recentMeals,
     symptomLogs: recentLogs,
     labReports: recentLabs,

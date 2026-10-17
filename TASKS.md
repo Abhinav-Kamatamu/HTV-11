@@ -42,10 +42,10 @@ pushing (see CLAUDE.md §2). One `doing` task per lane at a time.
 | T-031 | engine | `points.ts`: Contribution type, point values, per-layer cap of 4, severity bands, reason templates (engine-written, not Gemini), `gap` layer fed by T-008 and stale-trend marking + tests that the three story patients land in the SPEC §6 severities | done | T-021 T-022 T-023 T-027 T-028 T-029 T-030 |
 | T-040 | clinician | Role switcher + layout shell | done | T-001 |
 | T-041 | clinician | Patient queue sorted by risk, severity filter (mock data until T-005) | done | T-040 |
-| T-042 | clinician | Patient detail: lab trend charts with projection line + threshold bands | doing | T-040 |
-| T-043 | clinician | Flag card with "why" panel, evidence list, citations, validate/dismiss | todo | T-042 |
+| T-042 | clinician | Patient detail: lab trend charts with projection line + threshold bands | done | T-040 |
+| T-043 | clinician | Flag card with "why" panel, evidence list, citations, validate/dismiss | done | T-042 |
 | T-044 | clinician | Visit prep summary view | todo | T-026 |
-| T-045 | clinician | Why panel renders the points ledger: one row per contribution with layer, +points, reason, citation, and the total next to the severity. Label "priority points" | todo | T-043 T-031 |
+| T-045 | clinician | Why panel renders the points ledger: one row per contribution with layer, +points, reason, citation, and the total next to the severity. Label "priority points" | done | T-043 T-031 |
 | T-046 | clinician | Chart additions: Sen projection with crossing-range band on lab charts, CUSUM change-point marker on vitals, metabolic syndrome 3-of-5 chips with unknowns, STOP-Bang line | todo | T-042 T-027 T-028 T-029 T-030 |
 | T-047 | clinician | "Stopped logging" badge and filter in the patient queue, stale-trend label on charts | todo | T-041 T-008 |
 | T-048 | clinician | `/benchmark` page (labeled "Synthetic scale test"): run button, patient and row counts, median ms per path as a bar chart, run timestamp | todo | T-040 T-010 |
