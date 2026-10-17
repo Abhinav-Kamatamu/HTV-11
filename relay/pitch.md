@@ -41,3 +41,5 @@ T-083 still open and untouched.
 - 2026-10-17 T-081 done: `pitch/DEV_POST.md` drafted (published: false). Placeholders to fill: benchmark numbers (T-083), links, cover image. Publish after the event with the DEV challenge tag.
 
 - 2026-10-17 T-080 done: `pitch/DEVPOST.md`, `pitch/architecture.svg` (export to PNG for Devpost), `pitch/DEMO_SCRIPT.md`. Rehearsal and benchmark numbers remain T-083.
+
+- 2026-10-17 T-082 mostly done: `pitch/props/` has the BP monitor PNG and sample lab PDF (not yet test-uploaded through Gemini extraction). Backup screen recording is a human task after the T-083 rehearsal, so T-082 stays `doing`.
