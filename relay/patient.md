@@ -4,11 +4,17 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-060 through T-062 done. T-063, T-064 open next.
+T-060 through T-062 done. T-063 in progress, T-064 open next.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-063: lab report upload. Add a third `UploadCard` kind ("labs") in
+`src/app/(patient)/upload/upload-card.tsx`: field name `doc`, `accept="image/*,application/pdf"`,
+no `capture` attribute, posts to `/api/ingest/labs` (already built by core, returns
+`{labReport, observations, extraction, flags}`). Add a `LabsResult` type + `ResultPreview` branch
+using `metricLabel()`. Add the card to `upload/page.tsx`'s grid. No timeline change needed
+(`timeline-data.ts` already renders `lab_reports`). Smoke-test then revert per T-061/T-062
+convention.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
