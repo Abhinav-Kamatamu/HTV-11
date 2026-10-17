@@ -7,13 +7,13 @@ export default function Home() {
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 text-primary">
           <HeartPulse className="size-6" />
-          <span className="text-xl font-semibold tracking-tight">Undertow</span>
+          <span className="text-xl font-semibold tracking-tight">Ripple</span>
         </div>
         <h1 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
           Each result looked normal. The trend didn&apos;t.
         </h1>
         <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
-          Undertow helps care teams spot slow-building health risks early, and keeps patients
+          Ripple helps care teams spot slow-building health risks early, and keeps patients
           in the loop once a clinician has reviewed what it found.
         </p>
       </div>

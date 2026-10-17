@@ -4,7 +4,7 @@
 ROOT="$(cd "$(dirname "$0")/.." && git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 cd "$ROOT" || exit 0
 
-echo "[relay] Undertow repo. Follow CLAUDE.md section 1 before doing anything else."
+echo "[relay] Ripple repo. Follow CLAUDE.md section 1 before doing anything else."
 T=""; command -v timeout >/dev/null && T="timeout 8"   # macOS has no timeout by default
 if git remote | grep -q . && $T git fetch --quiet 2>/dev/null; then
   UP="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)"

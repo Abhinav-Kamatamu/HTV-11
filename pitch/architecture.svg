@@ -3,7 +3,7 @@
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#334155"/></marker>
   </defs>
   <rect width="960" height="520" fill="#ffffff"/>
-  <text x="480" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#0f172a">Undertow: the engine decides, Gemini explains</text>
+  <text x="480" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#0f172a">Ripple: the engine decides, Gemini explains</text>
 
   <rect x="20" y="60" width="150" height="150" rx="10" fill="#e0f2fe" stroke="#0369a1"/>
   <text x="95" y="85" text-anchor="middle" font-weight="bold" fill="#0c4a6e">Patient</text>

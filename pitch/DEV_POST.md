@@ -1,15 +1,15 @@
 ---
-title: The AI Never Sets the Risk Score: Building Undertow at Hack the Valley
+title: The AI Never Sets the Risk Score: Building Ripple at Hack the Valley
 published: false
 tags: ai, healthcare, typescript, hackathon
 cover_image: [ ]
 ---
 
-> Paste into DEV (markdown mode). Remaining `[ ]`: cover image, Devpost link. Swap the live-demo IP for the GoDaddy domain once T-015 lands. Then flip `published: true` and add the DEV challenge tag after the event. Synthetic data only.
+> Paste into DEV (markdown mode). Remaining `[ ]`: cover image, Devpost link. Then flip `published: true` and add the DEV challenge tag after the event. Synthetic data only.
 
 A patient has six HbA1c results over three years: 4.65, 4.8, 4.95, 5.1, 5.25, 5.4. Every one is below the lowest cutoff, so every one was filed as normal. Charted together, they reach prediabetes in about two years.
 
-That is the idea behind **Undertow**, which we built at Hack the Valley 11: a risk tool for primary care that watches trajectories, not single values. This post is about the design choice that shaped everything else. **The deterministic engine decides. The LLM only works at the edges.**
+That is the idea behind **Ripple**, which we built at Hack the Valley 11: a risk tool for primary care that watches trajectories, not single values. This post is about the design choice that shaped everything else. **The deterministic engine decides. The LLM only works at the edges.**
 
 ## The rule: Gemini never invents a score
 

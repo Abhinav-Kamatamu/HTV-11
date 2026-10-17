@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-You are one of several Claude Code sessions building **Undertow** (working name) for Hack the Valley 11.
+You are one of several Claude Code sessions building **Ripple** for Hack the Valley 11.
 Four teammates share this repo. Each has Claude Pro, and any session can hit its usage limit
 mid-task with no warning. Another teammate's session must be able to pick up exactly where
 you stopped. Everything below exists to make that possible.

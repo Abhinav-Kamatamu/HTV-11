@@ -1,6 +1,6 @@
-# Undertow: product spec
+# Ripple: product spec
 
-> Working name. "Each result looked normal. The trend didn't."
+> "Each result looked normal. The trend didn't."
 
 ## 1. Problem
 

@@ -12,11 +12,11 @@ export function databaseUrl(): string {
 }
 
 // Reuse one pool across Next.js dev hot reloads.
-const globalForPool = globalThis as unknown as { __undertowPool?: Pool };
+const globalForPool = globalThis as unknown as { __ripplePool?: Pool };
 
 export function getPool(): Pool {
-  globalForPool.__undertowPool ??= new Pool({ connectionString: databaseUrl() });
-  return globalForPool.__undertowPool;
+  globalForPool.__ripplePool ??= new Pool({ connectionString: databaseUrl() });
+  return globalForPool.__ripplePool;
 }
 
 export function getDb() {

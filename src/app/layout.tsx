@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Undertow",
+  title: "Ripple",
   description: "Clinician and patient views over synthetic demo data.",
 };
 

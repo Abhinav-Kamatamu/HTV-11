@@ -15,7 +15,7 @@ export default function PatientLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Link href="/home" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-primary">
             <HeartPulse className="size-5" />
-            Undertow
+            Ripple
           </Link>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <Suspense fallback={<div className="h-10 w-full rounded-lg bg-muted sm:w-48" />}>

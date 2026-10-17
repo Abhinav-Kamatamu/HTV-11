@@ -1,4 +1,4 @@
-# Undertow
+# Ripple
 
 Each result looked normal. The trend didn't.
 
@@ -7,7 +7,7 @@ Each result looked normal. The trend didn't.
 
 ## Inspiration
 
-A patient has six HbA1c results over three years: 4.65, 4.8, 4.95, 5.1, 5.25, 5.4. Each is below the lowest cutoff, so each was filed as normal. Charted together, the patient reaches prediabetes in about 2 years. Care teams see signals one at a time, if at all. Undertow combines them and tells the care team who to look at first, and why.
+A patient has six HbA1c results over three years: 4.65, 4.8, 4.95, 5.1, 5.25, 5.4. Each is below the lowest cutoff, so each was filed as normal. Charted together, the patient reaches prediabetes in about 2 years. Care teams see signals one at a time, if at all. Ripple combines them and tells the care team who to look at first, and why.
 
 ## What it does
 

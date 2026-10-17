@@ -17,7 +17,7 @@ export default function ClinicianLayout({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between gap-4 sm:justify-start sm:gap-8">
             <Link href="/queue" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-primary">
               <Gauge className="size-5" />
-              Undertow
+              Ripple
             </Link>
             <nav className="flex items-center gap-1 text-sm">
               {NAV.map((item) =>

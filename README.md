@@ -1,4 +1,4 @@
-# Undertow
+# Ripple
 
 Hack the Valley 11. Silent-killer early warning for primary care: patients log low-effort signals,
 a cited risk engine watches the *trends*, and clinicians decide what to act on.
@@ -16,7 +16,7 @@ Claude Code session can pick up any lane from that file alone.
 ### First time setup (each teammate, once)
 
 ```bash
-git clone <repo-url> undertow && cd undertow
+git clone <repo-url> ripple && cd ripple
 git config user.name "<your name>"
 cp .env.example .env.local     # fill in from the team chat
 claude                          # open Claude Code here; the session hook shows lane status
