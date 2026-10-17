@@ -9,7 +9,12 @@ Left in order: T-024 flags (Flag objects from the ledgers, ranking), then T-025/
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-024 `flags.ts`: `toFlags(evaluation)` per ledger with non-null severity — pick top contribution by
+points then the tie-break order threshold>trend>score>cooccurrence>symptom_cluster>sleep>changepoint>gap
+for `kind`/`title`/`rule`, union evidence/sourceIds, carry `label`. Add optional `normalizedSlope`
+(|slope/yr| / threshold) to `Contribution` in points.ts, set it in evaluate.ts's `labTrends`/`htnTrend`,
+for the ranking tiebreak. `rankPatients`: severity desc, points desc, normalizedSlope desc, gap-only
+(engagement-only) patients always sort after any clinical one. Tests off `generateSeed()`.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
