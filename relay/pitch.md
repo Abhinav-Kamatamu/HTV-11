@@ -43,3 +43,5 @@ T-083 still open and untouched.
 - 2026-10-17 T-080 done: `pitch/DEVPOST.md`, `pitch/architecture.svg` (export to PNG for Devpost), `pitch/DEMO_SCRIPT.md`. Rehearsal and benchmark numbers remain T-083.
 
 - 2026-10-17 T-082 mostly done: `pitch/props/` has the BP monitor PNG and sample lab PDF (not yet test-uploaded through Gemini extraction). Backup screen recording is a human task after the T-083 rehearsal, so T-082 stays `doing`.
+
+- 2026-10-17 T-083 done (partial rehearsal): measured live `POST /api/benchmark/run` on the 25-patient seed (12,900 rows: aggregate 33 ms, raw 35 ms, TS 116 ms, silence scan 54 ms, engine re-run 1.7 s) and put them in DEVPOST/DEV_POST/DEMO_SCRIPT. Queue API matches the demo cast (Walter urgent, Priya A, Marcus B, Daniel C). Not done: a human click-through of the UI, and a `--scale 1000` benchmark (it reseeds the shared DB, ~77s seed + 78s engine, must reseed back to 25 after; needs the team's OK).

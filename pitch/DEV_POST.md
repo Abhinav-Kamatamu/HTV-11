@@ -5,7 +5,7 @@ tags: ai, healthcare, typescript, hackathon
 cover_image: [ ]
 ---
 
-> Paste into DEV (markdown mode). Remaining `[ ]`: benchmark numbers (T-083), cover image, Devpost link. Swap the live-demo IP for the GoDaddy domain once T-015 lands. Then flip `published: true` and add the DEV challenge tag after the event. Synthetic data only.
+> Paste into DEV (markdown mode). Remaining `[ ]`: cover image, Devpost link. Swap the live-demo IP for the GoDaddy domain once T-015 lands. Then flip `published: true` and add the DEV challenge tag after the event. Synthetic data only.
 
 A patient has six HbA1c results over three years: 4.65, 4.8, 4.95, 5.1, 5.25, 5.4. Every one is below the lowest cutoff, so every one was filed as normal. Charted together, they reach prediabetes in about two years.
 
@@ -46,7 +46,7 @@ The patient never gets a risk alert from the AI. A clinician validates or dismis
 
 ## Small things that paid off
 
-- **Push math into the database.** Tiger Data (TimescaleDB) hypertables and continuous aggregates (`stats_agg`, `heartbeat_agg`) compute slopes and find silent patients next to the data. On 1,000 synthetic patients we measured [___ ms vs ___ ms vs ___ ms] in `/benchmark`.
+- **Push math into the database.** Tiger Data (TimescaleDB) hypertables and continuous aggregates (`stats_agg`, `heartbeat_agg`) compute slopes and find silent patients next to the data. On our live demo data (25 patients, 12,900 vitals rows) the fit for every patient takes about 33 ms from the continuous aggregate versus 116 ms fetching rows and computing in TypeScript (median of 5 runs).
 - **Keep data in Canada.** We deployed to Vultr Toronto and run a nightly job that re-evaluates every patient. It has to be a job: silence and trend ageing depend on time passing, not on new events, so nothing else would re-trigger them.
 - **Decide units once.** Everything is Canadian/SI (mmol/L, µmol/L, mg/mmol). One unit mistake in a clinical tool is worse than a missing feature.
 - **Run `next build`, not just tests.** Three of our pages passed every unit test and failed the production build under Next 16, because they read `searchParams` outside a Suspense boundary.

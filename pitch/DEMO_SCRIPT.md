@@ -1,7 +1,7 @@
 # 3-minute demo script
 
 Source of truth for beats: `docs/SPEC.md` §6. This adds who says what, what is on screen, and the
-fallback if something breaks. Rehearsal and timing numbers belong to T-083.
+fallback if something breaks. Benchmark numbers measured 2026-10-17 (T-083). Cast: A = Priya Nair, B = Marcus Webb, C = Daniel Okafor (Walter Hughes is the urgent one at the top of the queue).
 
 Two people: **Driver** (hands on laptop) and **Speaker** (talks). Synthetic data only, say so once.
 
@@ -12,7 +12,7 @@ Two people: **Driver** (hands on laptop) and **Speaker** (talks). Synthetic data
 | 3 | 1:00 to 1:40 | Patient B: eGFR slide, BP chart with CUSUM marker, Validate | "eGFR is falling about 6 a year and still above 60. Home BP shifted up around Sep 3. I validate, and only now does the patient get a message." Switch to patient view, show the message | Skip the patient switch, show the messages page |
 | 4 | 1:40 to 2:20 | Phone or laptop upload: pizza photo, printed BP monitor photo | "Live input: a meal and a BP screen." Show both land in the timeline | Use the printed BP photo (T-082) and the backup recording |
 | 5 | 2:20 to 2:40 | Patient C, "3 of 5 criteria, 2 unknown", severity monitor | "FIB-4 is still low. Three of five metabolic criteria are met, two unknown. We flag it as monitor. We do not over-alarm." | Skip |
-| 6 | 2:40 to 3:00 | `/benchmark` (first thing to cut if running long) | "1,000 patients. Slopes, projected dates and silent patients computed inside the database, [___ ms]. Clinician in the loop, data in Toronto." | Drop it, close on the Patient C line |
+| 6 | 2:40 to 3:00 | `/benchmark` (first thing to cut if running long) | "1,000 patients. Slopes, projected dates and silent patients computed inside the database. On the live 25-patient data the fit takes about 33 ms in the database versus 116 ms in app code. Clinician in the loop, data in Toronto." | Drop it, close on the Patient C line |
 
 ## Lines to land (judging criteria)
 - Usefulness: "a physician can check a flag in 30 seconds".
@@ -22,4 +22,4 @@ Two people: **Driver** (hands on laptop) and **Speaker** (talks). Synthetic data
 ## Before going on
 - [ ] App open on the live URL, logged in as clinician, queue loaded
 - [ ] Printed BP photo, sample lab PDF, backup recording ready (T-082)
-- [ ] Benchmark numbers in the Devpost and here match `/benchmark`
+- [ ] Click Run on `/benchmark` once so the page shows fresh numbers (expect about 33 / 35 / 116 ms)
