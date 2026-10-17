@@ -8,7 +8,7 @@ T-020 to T-022 done. Working through T-027, T-028, T-023, T-029, T-030, T-031, T
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-027 (engine): labtrend.ts: Mann-Kendall (exact p via inversion counts for n <= 10 without ties, tie-corrected normal otherwise), Sen slope + intercept, 90% slope interval, crossing date with range, gate (n >= 4, p < 0.10, 3 yr horizon). Known answers p = 2/n!.
+T-028 (engine): changepoint.ts: tabular CUSUM on daily vitals (28 day reference, k=0.5, h=5, sigma floor, missing days skipped, re-baseline after alarm), change date = last zero before alarm, shift size; tests incl. a no-change series and Patient B seed.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
