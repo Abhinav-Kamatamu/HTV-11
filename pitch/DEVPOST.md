@@ -24,10 +24,10 @@ A patient has six HbA1c results over three years: 4.65, 4.8, 4.95, 5.1, 5.25, 5.
 
 ## How it works
 
-- Risk engine: standard clinical scores plus trend tests on lab and home readings. It decides who gets flagged.
-- Gemini: reads photos and notes into data and writes the explanation. It never scores anyone.
-- Tiger Data: the database calculates trends and finds patients who stopped logging. On our demo data it takes about 33 ms, versus 116 ms in app code.
-- Vultr: the app runs on a Toronto server, with a nightly job that re-checks every patient.
+- Risk engine: checks each patient against Canadian health guidelines and looks at whether their results are trending toward a problem. Fixed rules, not AI, decide who gets flagged.
+- Gemini: reads photos and typed notes into data, and writes a short explanation for the clinician. It never scores anyone.
+- Tiger Data: stores every reading and does the trend math inside the database, so the queue stays fast. It also spots patients who stopped logging. On our demo data it ran about 3x faster than doing the math in the app (33 ms vs 116 ms).
+- Vultr: hosts the app on a Toronto server and re-checks every patient each night.
 - All data is synthetic.
 
 ## What we learned
