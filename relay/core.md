@@ -4,28 +4,23 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-001, T-002, T-003 done and pushed (lane has nothing in flight). The app is scaffolded (Next.js 16, Tailwind, shadcn, Vitest, ESLint). Tiger Cloud is the only database (no Docker): `timescaledb` 2.30.2 and `timescaledb_toolkit` 1.26.0 on PostgreSQL 18.6, schema migrated, hypertable and `obs_daily/weekly/monthly` created and verified (SQL slope/R²/crossing match a hand OLS). `db:seed` is still a stub, so the database has tables but no data.
+T-001 to T-004 done and pushed (lane has nothing in flight). Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is now SEEDED (run 2026-10-17, twice, idempotent): 24 patients, 13,634 observations, 101 lab reports, 20 meals, 12 symptom logs, 0 flags; `obs_daily/weekly/monthly` refreshed. SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
 
 ## In flight
-<!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-**T-004** deterministic seed (claimed 2026-10-17).
-- Plan: `src/db/seed/` = `rng.ts` (seeded mulberry32), `patients.ts` (fixed uuids for A/B/C + urgent case), `generate.ts` (pure row generators), `index.ts` (runner); `db:seed` runs it via tsx.
-- Wipe is scoped to seed data only (`source = 'synthetic'` observations, seed patients' fixed ids/`synthetic = true`), then insert, then `refreshStatements`.
-- STATUS: code written, tested and pushed (53f57ae). Remaining: one real `npm run db:seed` against Tiger Cloud (announce to team first), spot-check row counts/slope, then mark T-004 done.
-- Metric names are snake_case (hba1c, egfr, acr, bp_systolic, ...); log in DECISIONS. Tests: determinism + Patient A HbA1c ends 5.5, 5.7, 5.9. Don't run against the shared DB until the human says so.
+(none)
 
 ## Next up
-<!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- **T-004 (start here):** deterministic seed in `src/db/seed/`, wired to `npm run db:seed` (replace the echo stub in package.json, run with `tsx --env-file-if-exists=.env.local`). Story patients A/B/C with FIXED uuids, plus ~20 controls and one urgent case, per ARCHITECTURE.md "Synthetic data" and SPEC §6. Seeded RNG so everyone gets identical data. Every observation `source = 'synthetic'`, patients `synthetic = true`.
-  - Make it wipe-and-reload idempotent (delete the seed's rows in FK order, then insert); the DB is shared, so tell the team before running it.
-  - After loading call `refreshStatements` from `src/db/timescale.ts` so `obs_daily/weekly/monthly` cover historical rows.
-  - Patient A needs at least 6 HbA1c points ending 5.5, 5.7, 5.9 (T-011 extends the seed later with TG, HDL, waist, neck, sleep, a BP step change, a silent patient).
-  - Use the same x for any TS OLS check: `epoch_days = ts_ms / 86400000`.
-- Then: T-005 (API routes, stubs first), T-006 (Vultr deploy), T-007 (SQL vitals math; the proof query already worked, see Gotchas), T-009 and T-011 after T-004.
+- **T-005** API routes (stubs first, then real; read `node_modules/next/dist/docs/` first), or **T-007** SQL vitals math (the seed now has data to verify against; use `epoch_days = ts_ms / 86400000`). T-009 (scale mode) and T-011 (extend the seed) also unblocked.
+- **T-011 leftovers:** `hdl`, `neck_cm`, weekly `sleep_*` check-ins, a step change in Patient B's home BP (the seed BP is flat at 141/88 for now), Patient C 3 criteria met + 2 unknown, one silent patient (every seed patient currently logs through yesterday).
 - Optional hardening: get Tiger's CA and move to `sslmode=verify-full` (DECISIONS 03:40).
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **Seed (`src/db/seed/`)**
+  - `npm run db:seed` (`--dry-run`, `--anchor YYYY-MM-DD`). Shared DB: announce before running. It deletes only rows whose uuid starts `5eed` (plus `source = 'synthetic'` observations of those patients), upserts patients, then refreshes the aggregates. Flags and messages on seed patients ARE deleted on reseed (engine output); rows from real use survive.
+  - Fixed ids in `ids.ts` (`STORY_IDS`: A `5eed0002-...-001`, B `...002`, C `...003`, urgent `...004`). Timestamps are relative to the anchor (midnight UTC today): vitals are the 90 days ending yesterday, so after a day or two rerun the seed to keep "recent" data recent.
+  - Metric names/units: `UNITS` in `generate.ts` and DECISIONS 04:10. `symptom_logs.codes` hold placeholder strings (`thirst`, `fatigue`, `nocturia`, `edema`, `headache`, `chest_pain`, `dyspnea`); T-023 may want to rename them.
+  - Patient A: Priya Nair, B: Marcus Webb, C: Daniel Okafor, urgent: Walter Hughes. 20 controls, the last 3 drift slowly.
 - **Tiger Cloud connection**
   - One shared service for the whole team. `DATABASE_URL` lives in `.env.local` (git-ignored), shared in team chat. Never print or commit it, and don't `cat`/grep that file; load it with `node --env-file-if-exists=.env.local` or `tsx --env-file-if-exists=.env.local`.
   - node-pg treats `sslmode=require` as verify-full and fails with `SELF_SIGNED_CERT_IN_CHAIN` on Tiger Cloud. `src/db/client.ts` appends `uselibpqcompat=true` automatically. Any ad hoc script that builds its own `pg` client must do the same. Redact the host from error output.
