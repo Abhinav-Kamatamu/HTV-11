@@ -72,9 +72,17 @@ only the service file.
   systemd timer on 155.138.148.86 calling `curl -X POST localhost/api/engine/run` is the simplest
   version.
 - **T-014** (core, optional): move `UPLOAD_DIR` to Vultr Object Storage if a Canadian region is
-  available there. Lower priority now that uploads already survive a container restart via the
-  bind-mount (see Gotchas) — only worth doing if the MLH Vultr prize write-up wants the extra
-  Vultr surface area, not because the demo needs it.
+  available there. **Researched 2026-10-17: no Canadian/Toronto region found.** Vultr's Object
+  Storage FAQ and product page list Amsterdam, Atlanta, Bangalore, Chicago, Delhi NCR, London,
+  Los Angeles, Milan, New Jersey, Seattle, Silicon Valley, Singapore, Sydney, Tokyo (33 regions
+  total) — Toronto only shows up in Vultr's speed-test/looking-glass location list, which is
+  unrelated to Object Storage. Didn't confirm against the live API (`/v2/object-storage/clusters`
+  needs the account's Vultr API key, not read without asking) so this could be stale if Vultr
+  added one since, but it's not worth chasing further — T-014's own condition ("if a Canadian
+  region is available") isn't met, so **this task doesn't apply**; leave it `todo` in TASKS.md
+  as a stale/skip note rather than building anything, and don't re-research without a reason to
+  think Vultr added Toronto object storage since. Uploads already survive a container restart via
+  the bind-mount (see Gotchas) either way, so nothing is lost by skipping this.
 - Optional hardening: get Tiger's CA and move to `sslmode=verify-full` (DECISIONS 03:40).
 
 ## Gotchas
