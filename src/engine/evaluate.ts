@@ -301,13 +301,16 @@ function labTrends(ctx: Ctx, specs: LabTrendSpec[]): Contribution[] {
       reason = `${s.label} ${slope}, moving toward the ${withUnit(String(s.threshold), s.unit)} ${s.line} with no crossing inside 3 years.`;
     }
 
-    out.push(contribution(
-      "trend",
-      trendPoints(crossing?.days ?? null),
-      reason,
-      lastN(pts, 10).map((p) => ev(s.metric, p)),
-      [s.source, "mann_1945", "sen_1968"],
-    ));
+    out.push({
+      ...contribution(
+        "trend",
+        trendPoints(crossing?.days ?? null),
+        reason,
+        lastN(pts, 10).map((p) => ev(s.metric, p)),
+        [s.source, "mann_1945", "sen_1968"],
+      ),
+      normalizedSlope: Math.abs(t.slopePerYear) / s.threshold,
+    });
   }
   return out;
 }
@@ -344,7 +347,8 @@ function htnTrend(ctx: Ctx): Contribution[] {
     const reason = t.crossingDays === null
       ? `${slope}, moving toward ${c.threshold} mmHg with no crossing inside 3 years.`
       : `${slope}; reaches ${c.threshold} mmHg in about ${duration(t.crossingDays)}.`;
-    return [{ points, c: contribution("trend", points, reason, lastN(pts, 3).map((p) => ev(c.metric, p)), [THRESHOLDS.homeBp.source]) }];
+    const row = { ...contribution("trend", points, reason, lastN(pts, 3).map((p) => ev(c.metric, p)), [THRESHOLDS.homeBp.source]), normalizedSlope: Math.abs(t.slopePerYear) / c.threshold };
+    return [{ points, c: row }];
   });
   candidates.sort((a, b) => b.points - a.points);
   return candidates.slice(0, 1).map((x) => x.c);

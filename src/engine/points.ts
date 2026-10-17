@@ -22,6 +22,8 @@ export type Contribution = {
   stale?: true;
   /** A single abnormal result awaiting a repeat (DECISIONS 2026-10-17): floors the flag at monitor. */
   unconfirmed?: true;
+  /** |slope per year| / threshold, for trend rows only: a unitless rate so flags.ts can rank patients across metrics (RISK_ENGINE §7). */
+  normalizedSlope?: number;
 };
 
 /** Shown next to a flag whose only abnormal values are single, unrepeated results. */
