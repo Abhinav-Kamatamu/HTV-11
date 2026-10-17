@@ -4,24 +4,26 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-001 done: app scaffolded, `npm run dev/lint/test/build` work. T-002 half done (compose file written, never booted).
+T-001 and T-003 done (T-003 code-complete but UNRUN: no Docker/Postgres on the dev machine). T-002 half done (compose file written, never booted).
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-003 Drizzle schema. Plan: (1) `src/db/schema.ts` per ARCHITECTURE.md + `flags.points`/`flags.contributions`, drizzle-kit generates the plain-table migration; (2) Timescale-only SQL (extensions, `observations` hypertable, `obs_daily/weekly/monthly` continuous aggregates with `stats_agg`) lives in `src/db/timescale.ts` and is applied idempotently by `src/db/migrate.ts` AFTER the drizzle migrator, outside a transaction (caggs can't be created in one); (3) `npm run db:migrate` runs that script. NOT verifiable on this machine (no Docker/Postgres), so SQL is unrun until T-002's checks are done.
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-002 remainder, needs a machine WITH Docker (not the one used so far): `docker compose up db`, `CREATE EXTENSION timescaledb_toolkit`, confirm the volume persists after `down`/`up`, Tiger Cloud project + same extension, share `DATABASE_URL` in team chat.
-- T-003: Drizzle schema per ARCHITECTURE.md (+ `flags.points`, `flags.contributions`), migration, hypertable + continuous aggregates, replace the `db:migrate` stub. Can be written without Docker but not verified.
-- T-006 (Vultr deploy) is now unblocked.
+- T-002 remainder + T-003 verification, on a machine WITH Docker: `docker compose up db`, copy `.env.example` to `.env.local`, `npm run db:migrate` (twice, to prove idempotence), confirm `\d+ observations` shows a hypertable and `SELECT slope(stats_agg) ...` style queries work on `obs_daily`; fix any wrong toolkit/timescale signature in `src/db/timescale.ts`. Then Tiger Cloud project + same extension, share `DATABASE_URL` in team chat.
+- T-004: deterministic seed (story patients A/B/C + controls) into `src/db/seed/`; call `refreshStatements` from `src/db/timescale.ts` after loading.
+- T-006 (Vultr deploy) is unblocked.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
 - Next.js 16 / React 19.3: APIs differ from older docs. Read `node_modules/next/dist/docs/` before writing route handlers (see AGENTS.md).
+- Schema decisions in DECISIONS.md 03:10: uuid PKs, `patients.synthetic`, `messages.flag_id` NOT NULL, real-time caggs with `stats` = `stats_agg(value, epoch_days)`. Engine lane: T-022's OLS must use the same x (`extract(epoch FROM ts)/86400`).
+- Do NOT edit generated files in `src/db/migrations/`; change `schema.ts` and run `npm run db:generate`. Timescale-only SQL goes in `src/db/timescale.ts`.
 - `docker` is not installed on the dev machine used for T-001; T-002 verification is still outstanding.
 - shadcn's `cn` helper comes from the `cn` npm package (shadcn team's), not clsx/tailwind-merge. That is intended.
-- `db:migrate` and `db:seed` are echo stubs; replace them in T-003 / T-004.
+- `db:seed` is still an echo stub (T-004). `db:migrate` is real but untested against a database.
 - `.gitignore` ignores `next-env.d.ts` and `*.tsbuildinfo`; the create-next-app `.env*` ignore was NOT carried over, so `.env.example` stays tracked.
 
 ## Log
