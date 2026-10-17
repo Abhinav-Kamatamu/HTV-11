@@ -56,7 +56,7 @@ pushing (see CLAUDE.md §2). One `doing` task per lane at a time.
 | T-062 | patient | Symptom chat (with red-flag "seek care now" response) | done | T-060 |
 | T-063 | patient | Lab report upload | done | T-061 |
 | T-064 | patient | Weekly sleep check-in: three yes/no taps (snoring, tired, observed apnea) plus optional hours slept, neck circumference asked once; writes observations per RISK_ENGINE §1. Fixed form, no Gemini | done | T-060 |
-| T-080 | pitch | Devpost draft, architecture diagram, 3-min demo script rehearsal | doing | |
+| T-080 | pitch | Devpost draft, architecture diagram, 3-min demo script rehearsal | done | |
 | T-081 | pitch | DEV.to write-up (MLH DEV prize) | done | |
 | T-082 | pitch | Demo props: printed BP monitor photo, sample lab PDF, backup screen recording | todo | |
 | T-083 | pitch | Rehearse the 6-beat demo in SPEC §6 (ledger why panel, CUSUM marker, metabolic 3-of-5, `/benchmark`), put the measured benchmark numbers and the Tiger Data story (`stats_agg`, `heartbeat_agg`, continuous aggregates) in the Devpost draft | todo | T-048 |

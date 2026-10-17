@@ -9,9 +9,7 @@ T-083 still open and untouched.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-080: write `pitch/DEVPOST.md`, a Devpost template aimed at the PointClickCare "Catch It Early"
-judging criteria (usefulness, clarity, creativity, execution, use of AI), with TODO slots for
-the live benchmark numbers (T-083). Architecture diagram + demo script come after.
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
@@ -41,3 +39,5 @@ the live benchmark numbers (T-083). Architecture diagram + demo script come afte
 <!-- scripts/handoff.sh appends entries here. -->
 
 - 2026-10-17 T-081 done: `pitch/DEV_POST.md` drafted (published: false). Placeholders to fill: benchmark numbers (T-083), links, cover image. Publish after the event with the DEV challenge tag.
+
+- 2026-10-17 T-080 done: `pitch/DEVPOST.md`, `pitch/architecture.svg` (export to PNG for Devpost), `pitch/DEMO_SCRIPT.md`. Rehearsal and benchmark numbers remain T-083.

@@ -1,0 +1,73 @@
+<svg viewBox="0 0 960 520" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" font-size="14">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#334155"/></marker>
+  </defs>
+  <rect width="960" height="520" fill="#ffffff"/>
+  <text x="480" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#0f172a">Undertow: the engine decides, Gemini explains</text>
+
+  <rect x="20" y="60" width="150" height="150" rx="10" fill="#e0f2fe" stroke="#0369a1"/>
+  <text x="95" y="85" text-anchor="middle" font-weight="bold" fill="#0c4a6e">Patient</text>
+  <text x="95" y="112" text-anchor="middle" fill="#0c4a6e">Meal photo</text>
+  <text x="95" y="132" text-anchor="middle" fill="#0c4a6e">BP / glucose screen</text>
+  <text x="95" y="152" text-anchor="middle" fill="#0c4a6e">Lab PDF</text>
+  <text x="95" y="172" text-anchor="middle" fill="#0c4a6e">Symptom chat</text>
+  <text x="95" y="192" text-anchor="middle" fill="#0c4a6e">Sleep check-in</text>
+
+  <rect x="230" y="60" width="150" height="150" rx="10" fill="#fef3c7" stroke="#b45309"/>
+  <text x="305" y="85" text-anchor="middle" font-weight="bold" fill="#78350f">Gemini (in)</text>
+  <text x="305" y="115" text-anchor="middle" fill="#78350f">Extracts structure</text>
+  <text x="305" y="135" text-anchor="middle" fill="#78350f">zod-validated</text>
+  <text x="305" y="155" text-anchor="middle" fill="#78350f">Typed observations</text>
+  <text x="305" y="175" text-anchor="middle" fill="#78350f">with confidence</text>
+
+  <rect x="440" y="60" width="170" height="150" rx="10" fill="#dcfce7" stroke="#15803d"/>
+  <text x="525" y="85" text-anchor="middle" font-weight="bold" fill="#14532d">Risk engine (TS)</text>
+  <text x="525" y="112" text-anchor="middle" fill="#14532d">CANRISK, FIB-4, eGFR/ACR</text>
+  <text x="525" y="132" text-anchor="middle" fill="#14532d">STOP-Bang, 3-of-5 metabolic</text>
+  <text x="525" y="152" text-anchor="middle" fill="#14532d">Mann-Kendall + Sen, CUSUM</text>
+  <text x="525" y="172" text-anchor="middle" fill="#14532d">Points ledger + citations</text>
+  <text x="525" y="192" text-anchor="middle" fill="#14532d">Deterministic, unit tested</text>
+
+  <rect x="670" y="60" width="150" height="150" rx="10" fill="#fef3c7" stroke="#b45309"/>
+  <text x="745" y="85" text-anchor="middle" font-weight="bold" fill="#78350f">Gemini (out)</text>
+  <text x="745" y="115" text-anchor="middle" fill="#78350f">Writes the explanation</text>
+  <text x="745" y="135" text-anchor="middle" fill="#78350f">Cites only sources.ts</text>
+  <text x="745" y="155" text-anchor="middle" fill="#78350f">Never sets a score</text>
+
+  <rect x="850" y="60" width="95" height="150" rx="10" fill="#fce7f3" stroke="#be185d"/>
+  <text x="897" y="85" text-anchor="middle" font-weight="bold" fill="#831843">Clinician</text>
+  <text x="897" y="115" text-anchor="middle" fill="#831843">Ranked queue</text>
+  <text x="897" y="135" text-anchor="middle" fill="#831843">Why panel</text>
+  <text x="897" y="155" text-anchor="middle" fill="#831843">Validate or</text>
+  <text x="897" y="175" text-anchor="middle" fill="#831843">dismiss</text>
+
+  <g stroke="#334155" stroke-width="2" marker-end="url(#a)">
+    <line x1="170" y1="135" x2="228" y2="135"/>
+    <line x1="380" y1="135" x2="438" y2="135"/>
+    <line x1="610" y1="135" x2="668" y2="135"/>
+    <line x1="820" y1="135" x2="848" y2="135"/>
+  </g>
+
+  <rect x="230" y="290" width="380" height="120" rx="10" fill="#ede9fe" stroke="#6d28d9"/>
+  <text x="420" y="315" text-anchor="middle" font-weight="bold" fill="#3b0764">Tiger Data (TimescaleDB), observations hypertable</text>
+  <text x="420" y="345" text-anchor="middle" fill="#3b0764">Continuous aggregates: daily, weekly, monthly</text>
+  <text x="420" y="365" text-anchor="middle" fill="#3b0764">stats_agg: vitals slope, R², projected crossing</text>
+  <text x="420" y="385" text-anchor="middle" fill="#3b0764">heartbeat_agg: patients who stopped logging</text>
+
+  <rect x="670" y="290" width="275" height="120" rx="10" fill="#f1f5f9" stroke="#475569"/>
+  <text x="807" y="315" text-anchor="middle" font-weight="bold" fill="#0f172a">Vultr, Toronto</text>
+  <text x="807" y="345" text-anchor="middle" fill="#0f172a">Docker host, HTTPS, GoDaddy domain</text>
+  <text x="807" y="365" text-anchor="middle" fill="#0f172a">Nightly engine run, all patients</text>
+  <text x="807" y="385" text-anchor="middle" fill="#0f172a">Patient data stays in Canada</text>
+
+  <g stroke="#334155" stroke-width="2" marker-end="url(#a)">
+    <path d="M305 212 L305 288" stroke-dasharray="5 4"/>
+    <path d="M525 288 L525 212"/>
+  </g>
+  <text x="312" y="255" fill="#475569" font-size="12">write</text>
+  <text x="532" y="255" fill="#475569" font-size="12">read</text>
+
+  <rect x="20" y="450" width="925" height="50" rx="10" fill="#fff7ed" stroke="#c2410c"/>
+  <text x="482" y="472" text-anchor="middle" fill="#7c2d12" font-weight="bold">Clinician in the loop</text>
+  <text x="482" y="491" text-anchor="middle" fill="#7c2d12">Only a validated flag can message the patient. All demo data is synthetic and labeled as such.</text>
+</svg>
