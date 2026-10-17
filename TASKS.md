@@ -17,7 +17,7 @@ pushing (see CLAUDE.md §2). One `doing` task per lane at a time.
 
 | ID | Lane | Task | Status | Depends on |
 |---|---|---|---|---|
-| T-001 | core | Scaffold Next.js + TS + Tailwind + shadcn + Vitest + ESLint, `npm run dev/lint/test` work | doing (core) | |
+| T-001 | core | Scaffold Next.js + TS + Tailwind + shadcn + Vitest + ESLint, `npm run dev/lint/test` work | done | |
 | T-002 | core | `docker-compose.yml` Timescale for local dev (now on `timescale/timescaledb-ha:pg16` for `timescaledb_toolkit`; still to do: run `docker compose up db` and confirm `CREATE EXTENSION timescaledb_toolkit` works and the volume persists), Tiger Cloud project created and the same extension confirmed there, `DATABASE_URL` in team chat (not git) | todo | |
 | T-003 | core | Drizzle schema per ARCHITECTURE.md plus `flags.points int` and `flags.contributions jsonb` (RISK_ENGINE §7), migration, hypertable + continuous aggregates, `npm run db:migrate` | todo | T-001 T-002 |
 | T-004 | core | Deterministic seed generator with story patients A/B/C + controls, `npm run db:seed` | todo | T-003 |
