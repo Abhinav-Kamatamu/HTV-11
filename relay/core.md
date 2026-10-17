@@ -11,6 +11,14 @@ running `/api/engine/run` (empty right after a reseed — that's expected, see s
 SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP
 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
 
+**GEMINI_MODEL switched to `gemini-3.5-flash-lite` (2026-10-17)** for the live demo — was
+`gemini-3.8-flash`. Two reasons: free-tier quota is 20 requests/day *per project per model*
+(confirmed by a real 429 mid-testing), and flash-lite models get their own, much larger free
+pool, so this also buys quota headroom before the demo. Also ~4-5x faster: full
+`/api/ingest/meal` round trip (Gemini + DB + engine re-run) went from ~6.3s to ~1.3-1.8s,
+live-verified 3x. See DECISIONS.md for the full comparison (including why the new GCP $300
+trial credit, not more free keys, is the real fix if the quota becomes a problem again).
+
 **Live bug found + fixed (2026-10-17): every Gemini feature was broken on the deployed site**
 (meal/device/lab photo extraction, symptom coding, explanations, visit summaries) — all silently
 fell back to "needs_manual_entry"/"couldn't read that photo clearly" on a 404 from the Gemini
