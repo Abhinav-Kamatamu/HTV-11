@@ -9,10 +9,10 @@ raw input ──Gemini extract──> observations ──engine──> flags + p
 (photo, PDF, chat)            (typed, unit, confidence)  (rules, scores, trends)   (cites only sources.ts)
 ```
 
-> **Verify every number below against its source before coding it** (task T-020). These are
-> starting points gathered quickly, not a clinical reference. Put the verified value and URL in
-> `src/engine/sources.ts`. The same goes for every point value and tuning constant: they are
-> starting values to calibrate against the seed data, not findings.
+> **Thresholds in §2 were verified on 2026-10-17 (T-020).** The values and URLs live in
+> `src/engine/sources.ts` (`SOURCES`, `THRESHOLDS`); import them, do not retype them. Each source there
+> is marked `primary`, `secondary` or `convention` so you can see what was read directly. Point values
+> and tuning constants (§3, §6) are still starting values to calibrate against the seed data, not findings.
 
 ## 1. Observations
 
@@ -28,20 +28,20 @@ Metrics added for the co-occurrence and sleep layers (§4): `triglycerides`, `hd
 
 | Condition | Inputs | Rule (to verify) | Source to cite |
 |---|---|---|---|
-| Type 2 diabetes | HbA1c | prediabetes 6.0 to 6.4%, diabetes ≥ 6.5% | Diabetes Canada CPG |
-| | Fasting plasma glucose | prediabetes 6.1 to 6.9 mmol/L, diabetes ≥ 7.0 | Diabetes Canada CPG |
-| | CANRISK questionnaire | 0 to 32 low/moderate, 33 to 42 high, ≥ 43 very high | PHAC CANRISK, CTFPHC |
-| Chronic kidney disease | eGFR (CKD-EPI 2021) | < 60 sustained > 3 months = G3a+ | KDIGO |
-| | eGFR slope | decline > 5 mL/min/1.73m²/yr = rapid | KDIGO |
-| | Urine ACR | ≥ 3 mg/mmol = A2 | KDIGO |
-| Hypertension | Home BP average (≥ 7 days) | ≥ 135/85 | Hypertension Canada |
-| Fatty liver / fibrosis | FIB-4 = age × AST / (platelets × √ALT) | < 1.30 low, > 2.67 high (age > 65: lower cutoff 2.0) | AASLD / EASL MASLD guidance |
-| | Fatty Liver Index (TG, BMI, GGT, waist) | ≥ 60 suggests steatosis | Bedogni 2006 |
-| Metabolic syndrome | 5 criteria, see §4 | ≥ 3 of 5 met | Harmonized definition (Alberti 2009), Canadian waist cutoffs |
-| Sleep apnea risk | STOP-Bang, see §4 | 0 to 2 low, 3 to 4 intermediate, 5 to 8 high | Chung 2008/2016 |
-| Trend significance | Mann-Kendall S statistic | n ≥ 4 and two-sided p < 0.10 (tunable) | Mann 1945, Kendall 1975 |
+| Type 2 diabetes | HbA1c | at risk 5.5 to 5.9%, prediabetes 6.0 to 6.4%, diabetes ≥ 6.5% | Diabetes Canada CPG 2018 |
+| | Fasting plasma glucose | at risk 5.6 to 6.0, prediabetes 6.1 to 6.9 mmol/L, diabetes ≥ 7.0 | Diabetes Canada CPG 2018 |
+| | CANRISK questionnaire | < 21 low, 21 to 32 moderate, ≥ 33 high (there is no "very high" band) | PHAC CANRISK |
+| Chronic kidney disease | eGFR (CKD-EPI 2021) | < 60 sustained > 3 months = G3a+ (G3a is 45 to 59) | KDIGO 2024 |
+| | eGFR slope | sustained decline > 5 mL/min/1.73m²/yr = rapid | KDIGO 2012 (not in the 2024 text) |
+| | Urine ACR | 3 to 30 mg/mmol = A2, > 30 = A3 | KDIGO 2024 |
+| Hypertension | Home BP average (≥ 7 days) | ≥ 135/85 (2020). The 2025 primary-care guideline uses ≥ 130/80 for office, ambulatory and home; see DECISIONS.md | Hypertension Canada 2020 / 2025 |
+| Fatty liver / fibrosis | FIB-4 = age × AST / (platelets × √ALT) | < 1.30 low, > 2.67 high (age ≥ 65: lower cutoff 2.0) | AASLD 2023 |
+| | Fatty Liver Index (TG, BMI, GGT, waist) | < 30 rules out, ≥ 60 rules in steatosis; TG enters the formula in mg/dL (mmol/L × 88.57) | Bedogni 2006 |
+| Metabolic syndrome | 5 criteria, see §4 | ≥ 3 of 5 met | Alberti 2009; waist from Health Canada 2003 (102 / 88 cm) |
+| Sleep apnea risk | STOP-Bang, see §4 | 0 to 2 low, 3 to 4 intermediate, 5 to 8 high | Chung 2016 |
+| Trend significance | Mann-Kendall S statistic | n ≥ 4 and two-sided p < 0.10 (our tuning, not the papers') | Mann 1945, Kendall 1975 |
 | Slope estimate | Sen's slope | median of pairwise slopes | Sen 1968 |
-| Change-point | Tabular CUSUM | k = 0.5, h = 5 in baseline SDs (tunable) | Page 1954 |
+| Change-point | Tabular CUSUM | k = 0.5, h = 5 in baseline SDs (textbook defaults, tunable) | Page 1954 |
 
 ## 3. Trend math (the differentiator)
 
@@ -97,12 +97,11 @@ Individually sub-threshold signals can compound. Two layers capture that, both d
 
 ### 4a. Metabolic syndrome (3 of 5)
 
-Count how many of five criteria are met (harmonized definition; **verify each cutoff, and use the Canadian
-waist cutoffs**):
+Count how many of five criteria are met (Alberti 2009 harmonized definition, verified; waist uses the Canadian Health Canada cutoffs):
 
 | # | Criterion | Cutoff (to verify) | Data |
 |---|---|---|---|
-| 1 | Central adiposity | waist ≥ 102 cm (men) / ≥ 88 cm (women) | `waist_cm` |
+| 1 | Central adiposity | waist ≥ 102 cm (men) / ≥ 88 cm (women), Health Canada | `waist_cm` |
 | 2 | Triglycerides | ≥ 1.7 mmol/L or on treatment | `triglycerides`, intake meds |
 | 3 | HDL cholesterol | < 1.0 (men) / < 1.3 (women) mmol/L or on treatment | `hdl`, intake meds |
 | 4 | Blood pressure | ≥ 130 systolic or ≥ 85 diastolic, or on treatment | home BP 30-day mean, intake meds |
@@ -133,7 +132,7 @@ circumference is asked once at intake. STOP-Bang has eight items; the engine fil
 
 - Use the latest check-in within 90 days. Items with no data count as 0 and the score is displayed as a
   lower bound ("≥ 3, neck not recorded").
-- 0 to 2 low, 3 to 4 intermediate, 5 to 8 high. Intermediate adds a supporting contribution to any
+- 0 to 2 low, 3 to 4 intermediate, 5 to 8 high. BMI, age and neck are strict ("greater than"). Chung also upgrades some 3 to 4 scores to high (STOP ≥ 2 plus BMI > 35, neck > 40 or male); we do not apply that. Intermediate adds a supporting contribution to any
   open flag but does not fire alone. High (≥ 5) fires an `osa` flag at `monitor` regardless of the point
   bands, with the wording "screen suggests considering formal sleep assessment". We do not diagnose sleep
   apnea and we do not stage sleep from wearables.
@@ -193,7 +192,7 @@ Starting point values (all in `points.ts`):
 | Layer | Trigger | Points |
 |---|---|---|
 | threshold | value in guideline monitor range / in diagnostic range | 2 / 4 |
-| score | CANRISK high / very high; FIB-4 intermediate / high; FLI ≥ 60 | 2 / 3; 1 / 4; 2 |
+| score | CANRISK high (≥ 33); FIB-4 intermediate / high; FLI ≥ 60 | 2; 1 / 4; 2 |
 | trend | gate passes and crossing ≤ 1 yr / 1 to 3 yr / moving toward threshold, no crossing in horizon | 4 / 2 / 1 |
 | changepoint | adverse shift / adverse shift agreeing with an open trend on the same condition | 1 / 2 |
 | symptom | decayed cluster score, rounded to 0.5 | up to 3 |
