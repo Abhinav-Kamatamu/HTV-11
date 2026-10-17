@@ -4,11 +4,18 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-060 through T-063 done. T-064 open next.
+T-060 through T-063 done. T-064 claimed, in progress.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-064: weekly sleep check-in. New `src/app/(patient)/sleep/` page + client form (three yes/no
+taps, optional hours slept; neck_cm field shown only if the patient has no `neck_cm`
+observation yet, per RISK_ENGINE §4b "asked once"). A `"use server"` action in that same folder
+(no API route — none exists for this per the prior Gotcha) inserts observations
+(`sleep_snoring`/`sleep_tired`/`sleep_observed_apnea` sharing one `ts` so `evaluate.ts`'s
+`sleepCheckins()` can join them, plus optional `sleep_hours`/`neck_cm`), `source: "manual"`,
+then calls `runEngineForPatient`. New header button on `/home` linking to it. No Gemini, no
+risk score shown to the patient (CLAUDE.md §4).
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
