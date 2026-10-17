@@ -19,9 +19,9 @@ const FILTERS: { label: string; value: SeverityFilter | null }[] = [
 
 const SEVERITY_BADGE: Record<SeverityFilter, { label: string; className: string }> = {
   urgent: { label: "Urgent", className: "border-transparent bg-destructive/10 text-destructive" },
-  review: { label: "Review", className: "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400" },
-  monitor: { label: "Monitor", className: "border-transparent bg-blue-500/15 text-blue-700 dark:text-blue-400" },
-  none: { label: "None", className: "border-border bg-background text-muted-foreground" },
+  review: { label: "Review", className: "border-transparent bg-amber-100 text-amber-900" },
+  monitor: { label: "Monitor", className: "border-transparent bg-sky-100 text-sky-900" },
+  none: { label: "None", className: "border-border bg-card text-muted-foreground" },
 };
 
 function severityKey(p: QueuePatient): SeverityFilter {
@@ -92,55 +92,54 @@ async function QueueContent({
   const filtered = silentOnly ? bySeverity.filter((p) => p.silence !== null) : bySeverity;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">Patient queue</h1>
-          <p className="text-sm text-muted-foreground">
-            Ranked by severity, then priority points. Red-flag symptoms always sort to the top.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <nav className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
-            {FILTERS.map((f) => {
-              const isActive = f.value === activeFilter;
-              const href = queueHref({ severity: f.value, silent: silentOnly });
-              return (
-                <Link
-                  key={f.label}
-                  href={href}
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {f.label}
-                </Link>
-              );
-            })}
-          </nav>
-          <Link
-            href={queueHref({ severity: activeFilter, silent: !silentOnly })}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
-              silentOnly
-                ? "border-transparent bg-foreground text-background"
-                : "border-border bg-muted/50 text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <WifiOff className="size-3.5" /> Stopped logging
-          </Link>
-        </div>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Patient queue</h1>
+        <p className="text-base text-muted-foreground">
+          Ranked by severity, then priority points. Red-flag symptoms always sort to the top.
+        </p>
+      </div>
+
+      <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+        {FILTERS.map((f) => {
+          const isActive = f.value === activeFilter;
+          return (
+            <Link
+              key={f.label}
+              href={queueHref({ severity: f.value, silent: silentOnly })}
+              aria-current={isActive ? "true" : undefined}
+              className={cn(
+                "shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-muted"
+              )}
+            >
+              {f.label}
+            </Link>
+          );
+        })}
+        <span aria-hidden className="mx-1 h-6 w-px shrink-0 bg-border" />
+        <Link
+          href={queueHref({ severity: activeFilter, silent: !silentOnly })}
+          aria-pressed={silentOnly}
+          className={cn(
+            "flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+            silentOnly
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-foreground hover:bg-muted"
+          )}
+        >
+          <WifiOff className="size-4" /> Stopped logging
+        </Link>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border text-center text-muted-foreground">
-          <p className="text-sm font-medium">No patients match this filter</p>
+        <div className="flex min-h-[30vh] flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-border bg-card text-center text-muted-foreground">
+          <p className="text-base font-medium">No patients match this filter</p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-3">
           {filtered.map((p) => {
             const sev = severityKey(p);
             const badge = SEVERITY_BADGE[sev];
@@ -148,46 +147,45 @@ async function QueueContent({
               <li key={p.id}>
                 <Link
                   href={`/patients/${p.id}`}
-                  className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background p-4 transition-colors hover:bg-muted/40"
+                  className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/30 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <Badge variant="outline" className={badge.className}>
-                      {p.redFlag && <AlertTriangle />}
-                      {badge.label}
-                    </Badge>
+                  <div className="flex min-w-0 items-start justify-between gap-3 sm:flex-1 sm:justify-start sm:gap-4">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{p.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="text-base font-semibold">{p.name}</p>
+                      <p className="text-sm text-muted-foreground">
                         {age(p.dob)}y &middot; {p.sex}
                         {p.synthetic ? " · synthetic" : ""}
                       </p>
-                      {p.silence && (
-                        <Badge
-                          variant="outline"
-                          className="mt-1 border-border bg-muted text-muted-foreground"
-                        >
-                          <WifiOff className="size-3" /> Stopped logging · {p.silence.daysSince}d
-                        </Badge>
-                      )}
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1 sm:order-first sm:items-start">
+                      <Badge variant="outline" className={cn("px-2.5 py-1 text-sm", badge.className)}>
+                        {p.redFlag && <AlertTriangle />}
+                        {badge.label}
+                      </Badge>
                     </div>
                   </div>
 
-                  <div className="flex min-w-0 flex-1 items-center justify-end gap-6 text-right">
+                  <div className="flex min-w-0 items-start justify-between gap-4 border-t border-border pt-3 sm:flex-1 sm:border-t-0 sm:pt-0">
                     <div className="min-w-0">
                       {p.topFlag ? (
                         <>
-                          <p className="truncate text-sm">{p.topFlag.title}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm leading-snug sm:line-clamp-2">{p.topFlag.title}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
                             {p.flagCount} open flag{p.flagCount === 1 ? "" : "s"}
                           </p>
                         </>
                       ) : (
-                        <p className="text-xs text-muted-foreground">No open flags</p>
+                        <p className="text-sm text-muted-foreground">No open flags</p>
+                      )}
+                      {p.silence && (
+                        <Badge variant="outline" className="mt-2 border-border bg-muted px-2.5 py-1 text-sm text-muted-foreground">
+                          <WifiOff className="size-3.5" /> Stopped logging · {p.silence.daysSince}d
+                        </Badge>
                       )}
                     </div>
-                    <div className="w-16 shrink-0">
-                      <p className="text-sm font-semibold">{p.points}</p>
-                      <p className="text-xs text-muted-foreground">points</p>
+                    <div className="shrink-0 text-right">
+                      <p className="text-xl font-semibold leading-none">{p.points}</p>
+                      <p className="text-sm text-muted-foreground">points</p>
                     </div>
                   </div>
                 </Link>

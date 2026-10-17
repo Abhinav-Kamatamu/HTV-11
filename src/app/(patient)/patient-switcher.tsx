@@ -13,12 +13,12 @@ export function PatientSwitcher({ patients }: { patients: { id: string; name: st
   const current = searchParams.get("patient") ?? STORY_IDS.A;
 
   return (
-    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+    <label className="flex items-center gap-2 text-sm text-muted-foreground">
       Viewing as
       <select
         value={current}
         onChange={(e) => router.push(`/home?patient=${e.target.value}`)}
-        className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+        className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-card px-3 text-foreground sm:flex-none"
       >
         {patients.map((p) => (
           <option key={p.id} value={p.id}>

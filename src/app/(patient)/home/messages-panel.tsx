@@ -11,7 +11,7 @@ function formatTs(ts: Date): string {
 export function MessagesPanel({ messages }: { messages: Message[] }) {
   if (messages.length === 0) {
     return (
-      <div className="flex min-h-[10vh] items-center justify-center rounded-xl border border-dashed border-border text-center text-sm text-muted-foreground">
+      <div className="flex min-h-[10vh] items-center justify-center rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center text-base text-muted-foreground">
         No messages from your care team yet.
       </div>
     );
@@ -20,20 +20,20 @@ export function MessagesPanel({ messages }: { messages: Message[] }) {
   return (
     <ul className="flex flex-col gap-2">
       {messages.map((m) => (
-        <li key={m.id} className="flex gap-3 rounded-xl border border-border bg-background p-4">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <li key={m.id} className="flex gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
             <Mail className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="text-xs text-muted-foreground">{formatTs(m.ts)}</p>
+              <p className="text-sm text-muted-foreground">{formatTs(m.ts)}</p>
               {!m.readAt && (
-                <Badge variant="outline" className="border-transparent bg-blue-500/15 text-blue-700 dark:text-blue-400">
+                <Badge variant="outline" className="border-transparent bg-primary/10 text-primary">
                   New
                 </Badge>
               )}
             </div>
-            <p className="text-sm">{m.body}</p>
+            <p className="mt-0.5 text-base leading-relaxed">{m.body}</p>
           </div>
         </li>
       ))}

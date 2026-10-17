@@ -11,24 +11,26 @@ import { PatientSwitcher } from "./patient-switcher";
 export default function PatientLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-6 py-3">
-        <Link href="/home" className="flex items-center gap-2 font-semibold tracking-tight">
-          <HeartPulse className="size-5" />
-          Undertow
-        </Link>
-        <div className="flex items-center gap-3">
-          <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
-            Synthetic demo data
-          </span>
-          <Suspense fallback={<div className="h-8 w-44 rounded-lg bg-muted/50" />}>
-            <PatientSwitcherSlot />
-          </Suspense>
-          <Suspense fallback={<div className="h-8 w-[158px] rounded-lg bg-muted/50" />}>
-            <RoleSwitcher />
-          </Suspense>
+      <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <Link href="/home" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-primary">
+            <HeartPulse className="size-5" />
+            Undertow
+          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <Suspense fallback={<div className="h-10 w-full rounded-lg bg-muted sm:w-48" />}>
+              <PatientSwitcherSlot />
+            </Suspense>
+            <Suspense fallback={<div className="h-11 w-full rounded-xl bg-muted sm:h-10 sm:w-[170px]" />}>
+              <RoleSwitcher />
+            </Suspense>
+          </div>
         </div>
       </header>
-      <main className="flex-1 bg-muted/20 p-6">{children}</main>
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-5 sm:px-6 sm:py-8">{children}</main>
+      <footer className="border-t border-border px-4 py-4 text-center text-xs text-muted-foreground">
+        This is synthetic demo data, not a real person&apos;s record.
+      </footer>
     </div>
   );
 }
