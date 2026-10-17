@@ -40,7 +40,7 @@ pushing (see CLAUDE.md §2). One `doing` task per lane at a time.
 | T-029 | engine | `cooccurrence.ts`: metabolic syndrome 3-of-5 with met/not met/unknown per criterion, treatment counts as met, sex-specific cutoffs + tests | done | T-020 |
 | T-030 | engine | `stopbang.ts`: score from sleep check-in answers + record (age, sex, BMI, neck, treated BP), lower-bound handling for missing items, 90-day freshness + tests | done | T-020 |
 | T-031 | engine | `points.ts`: Contribution type, point values, per-layer cap of 4, severity bands, reason templates (engine-written, not Gemini), `gap` layer fed by T-008 and stale-trend marking + tests that the three story patients land in the SPEC §6 severities | done | T-021 T-022 T-023 T-027 T-028 T-029 T-030 |
-| T-040 | clinician | Role switcher + layout shell | doing | T-001 |
+| T-040 | clinician | Role switcher + layout shell | done | T-001 |
 | T-041 | clinician | Patient queue sorted by risk, severity filter (mock data until T-005) | todo | T-040 |
 | T-042 | clinician | Patient detail: lab trend charts with projection line + threshold bands | todo | T-040 |
 | T-043 | clinician | Flag card with "why" panel, evidence list, citations, validate/dismiss | todo | T-042 |
