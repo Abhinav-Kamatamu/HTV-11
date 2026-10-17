@@ -4,6 +4,7 @@ import { flags, labReports, meals, messages, observations, patients, symptomLogs
 import { evaluate } from "@/engine/evaluate";
 import { rankPatients, toFlags, type Flag } from "@/engine/flags";
 import { buildRecord, type PatientRecord, type RecordSource } from "@/engine/record";
+import type { Silence } from "@/engine/silence";
 import { activeRedFlags, SYMPTOM_PARAMS, type SymptomLogInput } from "@/engine/symptoms";
 import { DAY_MS } from "@/engine/types";
 import { ApiError, notFound } from "./http";
@@ -17,8 +18,13 @@ export async function requirePatient(db: Db, patientId: string) {
 }
 
 /** Loads one patient's engine input from the database (RISK_ENGINE §7: "buildRecord builds the input
- * from database or seed rows"). `now` defaults to the current time; tests/demos can pin it. */
-export async function loadPatientRecord(db: Db, patientId: string, now = Date.now()): Promise<PatientRecord> {
+ * from database or seed rows"). `now` defaults to the current time; tests/demos can pin it. `silence`
+ * overrides the engine's own pure fallback (`PatientRecord.silence`: undefined = derive it from the
+ * daily series, null = known not silent) — pass the result of a batched `listSilenceSql` (T-008, `src/db/silence.ts`)
+ * when running the engine for many patients at once, so each one doesn't re-derive it alone. */
+export async function loadPatientRecord(
+  db: Db, patientId: string, now = Date.now(), silence?: Silence | null,
+): Promise<PatientRecord> {
   const [patient] = await db.select().from(patients).where(eq(patients.id, patientId));
   if (!patient) notFound("patient");
   const [obs, logs] = await Promise.all([
@@ -28,7 +34,8 @@ export async function loadPatientRecord(db: Db, patientId: string, now = Date.no
       .from(symptomLogs).where(eq(symptomLogs.patientId, patientId)),
   ]);
   const source: RecordSource = { patient, observations: obs, symptomLogs: logs };
-  return buildRecord(source, now);
+  const rec = buildRecord(source, now);
+  return silence === undefined ? rec : { ...rec, silence };
 }
 
 /** Converts a persisted `flags` row back into the engine's `Flag` shape. Trusted (we wrote it), so the
@@ -53,9 +60,11 @@ export function rowToFlag(row: typeof flags.$inferSelect): Flag {
 /** Runs the engine for one patient and upserts the result: a row already open (`status = 'new'`) for a
  * condition is updated in place (same id, so the clinician UI doesn't churn); a condition with no open row
  * gets a new one. Conditions that stop firing are left for the clinician to dismiss — the engine never
- * auto-resolves a flag. */
-export async function runEngineForPatient(db: Db, patientId: string, now = Date.now()) {
-  const rec = await loadPatientRecord(db, patientId, now);
+ * auto-resolves a flag. `silence` is the same override `loadPatientRecord` takes (T-008). */
+export async function runEngineForPatient(
+  db: Db, patientId: string, now = Date.now(), silence?: Silence | null,
+) {
+  const rec = await loadPatientRecord(db, patientId, now, silence);
   const evaluation = evaluate(rec);
   const newFlags = toFlags(evaluation);
 

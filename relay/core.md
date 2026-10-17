@@ -4,21 +4,28 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-001 to T-005, T-007 done and pushed. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below). SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
+T-001 to T-005, T-007, T-008 done and pushed. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below). SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
 
 T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + engine + Gemini), skipping the stub phase since the engine/db wiring was already straightforward: `src/app/api/_lib/{http,engine-db,gemini,uploads}.ts` are the shared glue, one `route.ts` per endpoint. Smoke-tested live against Tiger Cloud + real Gemini (see Gotchas) — queue ranking, validate/dismiss/message, and the symptom red-flag path all confirmed working before committing.
 
 ## In flight
-- **T-008** silent patients. Plan: `heartbeat_agg`/`dead_ranges` per patient over daily-vitals metrics (`HEARTBEAT_METRICS`), trim the leading dead range from window start (confirmed gotcha below), derive the same `{lastTs, daysSince, activeDays}` shape as `detectSilence`, and write a parity test against it over all seed patients (only patient 25 silent on the default seed). Then wire it into `loadPatientRecord`/`listQueue` in place of the engine's pure fallback.
+(none)
 
 ## Next up
-- **T-009** scale mode (`--scale 1000`) once T-008 lands.
+- **T-009** scale mode (`--scale 1000`).
 - **T-006** deploy to Vultr: `UPLOAD_DIR` files aren't served back yet (no `GET /api/uploads/:file`); decide before deploy whether uploads need to survive a container restart (volume mount) or just need to exist long enough for the demo.
+- **T-010** benchmark page API, once T-009 lands (also needs T-007/T-008, both done).
 - **T-011 leftovers:** `hdl`, `neck_cm`, weekly `sleep_*` check-ins, a step change in Patient B's home BP (the seed BP is flat at 141/88 for now), Patient C 3 criteria met + 2 unknown, one silent patient (every seed patient currently logs through yesterday).
 - Optional hardening: get Tiger's CA and move to `sslmode=verify-full` (DECISIONS 03:40).
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **Silent patients (T-008, `src/db/silence.ts`)**
+  - **`dead_ranges()`'s `start` is `lastHeartbeat + heartbeat_liveness`, not `lastHeartbeat`.** The toolkit only calls a patient "dead" once the full liveness grace period has elapsed, so the reported gap starts later than the real last reading by exactly `heartbeat_liveness`. `listSilenceSql` subtracts `SILENCE.quietDays` back out — found by running it against Rosa Delgado's real data (her gap looked like it started 7 days after her actual last reading, with `daysSince` off by exactly 7). Not in `pg_proc`'s signatures; only shows up by actually running it. **If you query `dead_ranges()` directly for anything else, remember this offset.**
+  - `heartbeat_agg`'s window is each patient's own `min(ts)` to `now` (not a fixed width) so there's no leading dead-range to trim — the window is the patient's whole history.
+  - `activeDays` is a plain `count(DISTINCT floor(epoch_day))` over a handful of candidates (those whose gap already reaches `now`), not a toolkit accessor — toolkit only answers "is there a gap", not "how many days were active".
+  - `listSilenceSql(db, now)` returns `Map<patientId, Silence>` for every *currently* silent patient. `loadPatientRecord`/`runEngineForPatient` take an optional `silence` override (4th arg) so `/api/engine/run`'s "re-run all" does one batched scan instead of 25+ individual pure-TS derivations; single-patient calls (ingest routes) still use the pure fallback, which is already cheap since they already have that patient's raw observations in hand.
+  - Verified via `npm run db:verify-silence` (`scripts/verify-silence-sql.ts`, not in `npm test`): 25/25 seed patients match `detectSilence` exactly.
 - **Vitals SQL (T-007, `src/db/vitals.ts`)**
   - `olsFitSql(db, {patientId, metric, aggregate?, sinceMs?})` returns the exact `OlsFit` shape from `src/engine/trends.ts`, computed via `rollup(stats)` + `slope()`/`intercept()`/`determination_coeff()`/`sum_x()`/`sum_y()`/`num_vals()` over `obs_daily` (default) or `obs_weekly`/`obs_monthly`. Reuse `trends.ts`'s own `slopePerYear`/`crossingDays` on the result rather than reimplementing — that's the point of matching the shape.
   - Crossing day = `(threshold − intercept()) / slope()`, converted from an absolute epoch day to "days from now" exactly like `crossingDays()` does (`− now/DAY_MS`); chose this over `x_intercept()` since it needs no second `value − threshold` aggregate (DECISIONS 2026-10-17).

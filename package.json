@@ -11,7 +11,8 @@
     "db:migrate": "tsx --env-file-if-exists=.env.local src/db/migrate.ts",
     "db:seed": "tsx --env-file-if-exists=.env.local src/db/seed/index.ts",
     "db:generate": "drizzle-kit generate",
-    "db:verify-vitals": "tsx --env-file-if-exists=.env.local scripts/verify-vitals-sql.ts"
+    "db:verify-vitals": "tsx --env-file-if-exists=.env.local scripts/verify-vitals-sql.ts",
+    "db:verify-silence": "tsx --env-file-if-exists=.env.local scripts/verify-silence-sql.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
