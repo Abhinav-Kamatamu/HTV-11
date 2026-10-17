@@ -4,19 +4,17 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-Docs updated (not a numbered task): Vultr usage expanded beyond bare hosting. T-080 through
-T-083 still open and untouched.
+T-080, T-081, T-083 done. T-082 `doing`: props made, backup recording not.
+Devpost, DEV post, demo script, architecture SVG all in `pitch/`, numbers filled from live benchmark.
 
 ## In flight
-<!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-082: done = `pitch/props/bp_monitor_141_88.png` and `sample_lab_report.pdf`. Not done = `backup_demo.mp4`
+(human screen recording of the full run) and a test upload of both props on the live app.
 
 ## Next up
-<!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- See TASKS.md for T-080 through T-083 (Devpost draft, DEV.to write-up, demo props, rehearsal).
-- T-083's Devpost draft should now also tell the Toronto-region + nightly-engine-job + (if built)
-  object-storage/vector-store Vultr story from `docs/ARCHITECTURE.md`'s new "Vultr usage beyond
-  hosting" section — it's the honest answer to "why Vultr" instead of "it was free".
+- Human: click through the 6 beats in `pitch/DEMO_SCRIPT.md` with a timer, record `backup_demo.mp4`, close T-082.
+- Export `pitch/architecture.svg` to PNG for Devpost; add cover image to `pitch/DEV_POST.md`.
+- After T-015 (GoDaddy domain) swap the IP link for the domain in `DEVPOST.md` and `DEV_POST.md`; after the event set `published: true` on the DEV post.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
@@ -37,6 +35,7 @@ T-083 still open and untouched.
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->
+- 2026-10-17 14:53 · williamJpeng · T-080/081/083 done, T-082 props made, recording pending · 0 file(s) changed since last commit
 
 - 2026-10-17 T-081 done: `pitch/DEV_POST.md` drafted (published: false). Placeholders to fill: benchmark numbers (T-083), links, cover image. Publish after the event with the DEV challenge tag.
 
