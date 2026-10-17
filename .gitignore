@@ -11,3 +11,7 @@ coverage/
 uploads/
 .vercel
 .claude/settings.local.json
+
+# typescript / next
+*.tsbuildinfo
+next-env.d.ts
