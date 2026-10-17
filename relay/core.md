@@ -4,7 +4,20 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-001 to T-005, T-007 to T-011 done and pushed; only T-006 (deploy) is left in this lane. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below). SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
+T-001 to T-005, T-007 to T-012 done and pushed; only T-006 (deploy, on hold — human is
+reevaluating Vultr), T-013 and T-014 (both Vultr-dependent, see below) are left in this lane.
+Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit`
+1.26.0). The DB is SEEDED: 25 patients, flags table is populated by running `/api/engine/run`
+(empty right after a reseed — that's expected, see seed Gotcha below). SQL slopes per year match
+the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT
++6.1 and GGT +9.4.
+
+T-012 done (2026-10-17): `/api/benchmark/run`'s 3 vitals-OLS paths now each run as one batched
+query instead of 150 (one per patient×metric pair). Live-verified against Tiger Cloud: all three
+paths still agree exactly on 12,900 rows (same as before), and timing dropped from ~3.4-3.5s to
+~35-47ms each, with the paths now landing in the order the Tiger Data story wants (continuous
+aggregate ~34-36ms fastest, raw table ~37-38ms, fetch+pure-TS ~46-58ms slowest) across three
+separate runs. See Gotchas for the implementation details.
 
 T-010 built `POST /api/benchmark/run`: three vitals-OLS paths (continuous aggregate `olsFitSql`, new raw-table `olsFitRawSql`, fetch+pure-TS `olsFit`) over `bp_systolic`/`bp_diastolic`/`weight_kg`/`resting_hr`/`steps`/`sleep_hours` (RISK_ENGINE §3b — labs use Mann-Kendall/Sen, not OLS, so they're excluded), plus `listSilenceSql` and a full engine re-run, each timed as median-of-5 via `src/app/api/_lib/benchmark.ts#medianMs`. Live-smoke-tested against Tiger Cloud: all three vitals paths agreed exactly (12,900 rows each) on the 25-patient seed; see Gotchas for timings and why they're dominated by network round trips at this scale.
 
@@ -14,8 +27,10 @@ T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + eng
 (none)
 
 ## Next up
-- **T-012** (new 2026-10-17, clinician session flagged it while building T-048): batch `/api/benchmark/run`'s 3 vitals-OLS paths from a per-patient-per-metric loop (150 awaited round trips each) into one query per path, so the continuous-aggregate win shows up live at the default 25-patient demo scale instead of being swamped by network RTT. Already diagnosed, not a mystery — see Gotchas below.
-- **T-006** deploy to Vultr, now scoped to the **Toronto region** specifically (patient data stays
+- **T-006, T-013, T-014 are all on hold (2026-10-17): the human is reevaluating whether to use
+  Vultr at all**, separate from the earlier "account not set up yet" blocker. Don't start any of
+  them until that's settled — ask first if it looks resolved, don't assume.
+- **T-006** deploy to Vultr, scoped to the **Toronto region** specifically (patient data stays
   in Canada — see `docs/ARCHITECTURE.md`'s "Vultr usage beyond hosting", added 2026-10-17 by the
   pitch lane at the human's request). `UPLOAD_DIR` files aren't served back yet (no
   `GET /api/uploads/:file`); decide before deploy whether uploads need to survive a container
@@ -35,6 +50,32 @@ T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + eng
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **Benchmark batching (T-012, `src/db/vitals.ts`, `src/app/api/benchmark/run/route.ts`)**
+  - New `olsFitBatchSql`/`olsFitRawBatchSql` do the same `rollup(stats)`/`stats_agg` math as
+    `olsFitSql`/`olsFitRawSql` but take `patientIds`/`metrics` arrays and `GROUP BY patient_id,
+    metric` instead of filtering to one pair — one query covers all 150 pairs on the default
+    seed. New pure `groupFitRows` (unit-tested, no DB) nests the batched rows into
+    `Map<patientId, Map<metric, OlsFit>>`; the route sums `.n` across it for the `rows` count it
+    already reported.
+  - **Interpolating a JS array directly into a `sql` template does not produce a usable
+    `IN (...)` list** — confirmed by actually running it against Tiger Cloud: `WHERE x IN
+    (${arr})` compiles to `IN (($1, $2, $3))`, a single row-value tuple, not three elements, and
+    the query fails. Same Gotcha `silence.ts`'s `listSilenceSql` already hit for `IN`-lists; a
+    new local `inList()` helper in `vitals.ts` builds it by hand (`sql.join(values.map(v =>
+    sql\`${v}\`), sql\`, \`)`), same pattern. Don't reach for `= ANY($1::uuid[])` either — that's
+    the alternative CLAUDE.md's T-012 wording suggested, but it was never actually tried or
+    verified; `IN (...)` built this way is what's confirmed working.
+  - The `fetchAndCompute` (pure-TS) path batches the same way but through drizzle's typed
+    `inArray()` instead of raw SQL (`WHERE patient_id IN (...) AND metric IN (...)`, one `select`),
+    then groups the returned rows by `` `${patientId}\u0000${metric}` `` in JS before calling
+    `olsFit` per group — no raw-SQL IN-list gotcha there since `inArray` already handles it
+    correctly.
+  - Live-verified against Tiger Cloud on the default 25-patient seed, three separate runs: all
+    three paths still agree exactly on 12,900 rows (unchanged — batching didn't change what's
+    computed, only how many round trips it takes), and timing dropped from ~3.4-3.5s to
+    ~34-58ms per path, now ordered the way the Tiger Data story wants it: continuous aggregate
+    (~34-36ms) fastest, raw table (~37-38ms) next, fetch+pure-TS (~46-58ms) slowest. T-083
+    (pitch) can use these numbers in the Devpost draft instead of the old "within noise" ones.
 - **Scale mode (T-009, `src/db/seed/{generate,copy,index}.ts`)**
   - `npm run db:seed -- --scale 1000` (or any N >= 4). `generateScaleProfiles(scale)` keeps STORY_PROFILES (A/B/C/urgent) fixed and fills the rest from `ARCHETYPE_MIX` (70/15/5/5/5: stable/slow_drift/rapid_decline/silent/metabolic_cluster) via deterministic cumulative-share bucketing, own RNG namespace (10000s/20000s) so it never shifts the default ~25-patient draws.
   - Observations go through a real `COPY FROM STDIN` (`src/db/seed/copy.ts`, new dep `pg-copy-streams`) outside the main transaction — COPY needs a dedicated checked-out client, not the `Pool`/a drizzle `tx`. The default (no `--scale`) path is untouched (still the old chunked INSERT inside the transaction).

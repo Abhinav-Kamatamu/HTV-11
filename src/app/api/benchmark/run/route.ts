@@ -1,11 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, inArray } from "drizzle-orm";
 import { medianMs } from "@/app/api/_lib/benchmark";
 import { runEngineForPatient } from "@/app/api/_lib/engine-db";
 import { ok, withErrors } from "@/app/api/_lib/http";
 import { getDb } from "@/db/client";
 import { observations, patients } from "@/db/schema";
 import { listSilenceSql } from "@/db/silence";
-import { olsFitRawSql, olsFitSql } from "@/db/vitals";
+import { olsFitBatchSql, olsFitRawBatchSql } from "@/db/vitals";
 import { crossingDays, olsFit } from "@/engine/trends";
 import type { Pt } from "@/engine/types";
 
@@ -13,6 +13,13 @@ import type { Pt } from "@/engine/types";
 // Median of 5 warm runs for three ways of getting the same vitals OLS (slope/R²/crossing) over every
 // patient, plus the silent-patient scan and a full engine re-run, each timed standalone. Nothing
 // hard-coded: patient and row counts come from live queries, not the seed's known shape.
+
+// T-012: each vitals path used to loop one awaited query per (patient, metric) pair — 150 round
+// trips on the default 25-patient seed, which dominated the timing over the actual query-plan cost
+// and made the three paths land within noise of each other (relay/core.md Gotchas, T-010). Each
+// path below now runs as exactly one batched query (`WHERE patient_id IN (...) AND metric IN (...)`,
+// grouped), so whatever the continuous aggregate actually saves shows up at this scale too, not only
+// at `--scale`.
 
 // Vitals-only (RISK_ENGINE §3b/§8): the metrics dense enough for OLS in the continuous aggregates.
 // Labs (hba1c, fpg, egfr, acr) use Mann-Kendall + Sen's slope instead (§3a, T-027) and are never
@@ -31,43 +38,45 @@ export async function POST() {
     const allPatients = await db.select({ id: patients.id }).from(patients);
     const patientIds = allPatients.map((p) => p.id);
 
-    const continuousAggregate = await medianMs(async () => {
+    const sumRows = (fits: Map<string, Map<string, { n: number }>>) => {
       let rows = 0;
-      for (const patientId of patientIds) {
-        for (const metric of VITALS_METRICS) {
-          const fit = await olsFitSql(db, { patientId, metric });
-          if (fit) rows += fit.n;
-        }
-      }
+      for (const byMetric of fits.values()) for (const fit of byMetric.values()) rows += fit.n;
       return rows;
+    };
+
+    const continuousAggregate = await medianMs(async () => {
+      const fits = await olsFitBatchSql(db, { patientIds, metrics: VITALS_METRICS });
+      return sumRows(fits);
     });
 
     const rawTable = await medianMs(async () => {
-      let rows = 0;
-      for (const patientId of patientIds) {
-        for (const metric of VITALS_METRICS) {
-          const fit = await olsFitRawSql(db, { patientId, metric });
-          if (fit) rows += fit.n;
-        }
-      }
-      return rows;
+      const fits = await olsFitRawBatchSql(db, { patientIds, metrics: VITALS_METRICS });
+      return sumRows(fits);
     });
 
     const fetchAndCompute = await medianMs(async () => {
-      let rows = 0;
-      for (const patientId of patientIds) {
-        for (const metric of VITALS_METRICS) {
-          const raw = await db
-            .select({ ts: observations.ts, value: observations.value })
-            .from(observations)
-            .where(and(eq(observations.patientId, patientId), eq(observations.metric, metric)));
-          const points: Pt[] = raw.map((r) => ({ ts: r.ts.getTime(), value: r.value }));
-          const fit = olsFit(points);
-          if (!fit) continue;
-          rows += fit.n;
-          const threshold = THRESHOLD[metric];
-          if (threshold !== undefined) crossingDays(fit, threshold, now);
+      const raw = await db
+        .select({ patientId: observations.patientId, metric: observations.metric, ts: observations.ts, value: observations.value })
+        .from(observations)
+        .where(and(inArray(observations.patientId, patientIds), inArray(observations.metric, VITALS_METRICS)));
+      const byGroup = new Map<string, Pt[]>();
+      for (const r of raw) {
+        const key = `${r.patientId}\u0000${r.metric}`;
+        let points = byGroup.get(key);
+        if (!points) {
+          points = [];
+          byGroup.set(key, points);
         }
+        points.push({ ts: r.ts.getTime(), value: r.value });
+      }
+      let rows = 0;
+      for (const [key, points] of byGroup) {
+        const fit = olsFit(points);
+        if (!fit) continue;
+        rows += fit.n;
+        const metric = key.slice(key.indexOf("\u0000") + 1) as VitalsMetric;
+        const threshold = THRESHOLD[metric];
+        if (threshold !== undefined) crossingDays(fit, threshold, now);
       }
       return rows;
     });

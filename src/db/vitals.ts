@@ -97,3 +97,87 @@ export async function olsFitRawSql(
   `);
   return mapFitRow(result.rows[0] as FitRow | undefined);
 }
+
+type BatchFitRow = FitRow & { patient_id: string; metric: string };
+
+/** Groups one path's batched rows by patient then metric, dropping any `mapFitRow` returned null
+ * for (same < 2 points rule as the single-patient functions). Pure, so it's unit-testable without
+ * a database — the two batch functions below only add the SQL that produces these rows. */
+export function groupFitRows(rows: BatchFitRow[]): Map<string, Map<string, OlsFit>> {
+  const out = new Map<string, Map<string, OlsFit>>();
+  for (const row of rows) {
+    const fit = mapFitRow(row);
+    if (!fit) continue;
+    if (!out.has(row.patient_id)) out.set(row.patient_id, new Map());
+    out.get(row.patient_id)!.set(row.metric, fit);
+  }
+  return out;
+}
+
+/** `sql` explodes a JS array into one bound param per element wrapped as a single tuple, not a
+ * comma-separated list usable in `IN (...)` (confirmed against Tiger Cloud, same Gotcha as
+ * `silence.ts`'s `listSilenceSql`) — build the IN-list by hand instead of `= ANY($1::text[])`. */
+function inList(values: readonly string[]) {
+  return sql.join(values.map((v) => sql`${v}`), sql`, `);
+}
+
+/**
+ * `olsFitSql`, batched across every (patientId, metric) pair in one query instead of one round trip
+ * per pair (T-012: 150 awaited queries per path on the default 25-patient seed was dominating the
+ * benchmark route's timing over the actual query-plan cost, masking the continuous aggregate's real
+ * advantage). Same `rollup(stats)` math, grouped by `patient_id, metric` instead of filtered to one.
+ */
+export async function olsFitBatchSql(
+  db: Db,
+  args: { patientIds: readonly string[]; metrics: readonly string[]; aggregate?: Aggregate; sinceMs?: number },
+): Promise<Map<string, Map<string, OlsFit>>> {
+  const { patientIds, metrics, aggregate = "obs_daily", sinceMs } = args;
+  if (!(AGGREGATES as readonly string[]).includes(aggregate)) {
+    throw new Error(`unknown aggregate ${aggregate}`);
+  }
+  const table = sql.raw(aggregate); // whitelisted above, never user input
+  const sinceClause = sinceMs !== undefined ? sql`AND bucket >= to_timestamp(${sinceMs / 1000})` : sql``;
+  const result = await db.execute(sql`
+    SELECT
+      patient_id, metric,
+      num_vals(agg) AS n,
+      slope(agg) AS slope_per_day,
+      intercept(agg) AS intercept,
+      determination_coeff(agg) AS r2,
+      sum_x(agg) / num_vals(agg) AS x_mean,
+      sum_y(agg) / num_vals(agg) AS y_mean
+    FROM (
+      SELECT patient_id, metric, rollup(stats) AS agg
+      FROM ${table}
+      WHERE patient_id IN (${inList(patientIds)}) AND metric IN (${inList(metrics)}) ${sinceClause}
+      GROUP BY patient_id, metric
+    ) t
+  `);
+  return groupFitRows(result.rows as BatchFitRow[]);
+}
+
+/** `olsFitRawSql`, batched the same way `olsFitBatchSql` batches the continuous-aggregate path (T-012). */
+export async function olsFitRawBatchSql(
+  db: Db,
+  args: { patientIds: readonly string[]; metrics: readonly string[]; sinceMs?: number },
+): Promise<Map<string, Map<string, OlsFit>>> {
+  const { patientIds, metrics, sinceMs } = args;
+  const sinceClause = sinceMs !== undefined ? sql`AND ts >= to_timestamp(${sinceMs / 1000})` : sql``;
+  const result = await db.execute(sql`
+    SELECT
+      patient_id, metric,
+      num_vals(agg) AS n,
+      slope(agg) AS slope_per_day,
+      intercept(agg) AS intercept,
+      determination_coeff(agg) AS r2,
+      sum_x(agg) / num_vals(agg) AS x_mean,
+      sum_y(agg) / num_vals(agg) AS y_mean
+    FROM (
+      SELECT patient_id, metric, stats_agg(value, extract(epoch FROM ts) / 86400.0) AS agg
+      FROM observations
+      WHERE patient_id IN (${inList(patientIds)}) AND metric IN (${inList(metrics)}) ${sinceClause}
+      GROUP BY patient_id, metric
+    ) t
+  `);
+  return groupFitRows(result.rows as BatchFitRow[]);
+}
