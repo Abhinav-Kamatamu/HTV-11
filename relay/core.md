@@ -24,21 +24,19 @@ T-010 built `POST /api/benchmark/run`: three vitals-OLS paths (continuous aggreg
 T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + engine + Gemini), skipping the stub phase since the engine/db wiring was already straightforward: `src/app/api/_lib/{http,engine-db,gemini,uploads}.ts` are the shared glue, one `route.ts` per endpoint. Smoke-tested live against Tiger Cloud + real Gemini (see Gotchas) — queue ranking, validate/dismiss/message, and the symptom red-flag path all confirmed working before committing.
 
 ## In flight
-(none)
+T-006: Vultr reevaluation is resolved — account made, billing added, instance up in Toronto
+(155.138.148.86, Ubuntu 24.04, SSH as root with an ed25519 key, confirmed reachable after two
+reinstalls to get the key attached — Vultr's SSH-key picker only applies at deploy/reinstall
+time, not retroactively to a running instance, see Gotchas). Scope for this pass: deploy only
+(Docker container running on the box, reachable over plain HTTP at the IP) — domain
+registration and HTTPS are still deliberately out, per the earlier human decision to split them
+off as separate, confirm-first steps. Plan: add `output: "standalone"` to `next.config.ts`,
+write a multi-stage Dockerfile + `.dockerignore`, install Docker on the server, ship the repo
++ `.env.local` secrets over (rsync/scp, not git, no GitHub credentials on the box), build and
+run the container, decide `UPLOAD_DIR` persistence (bind-mount vs ephemeral) before finishing.
 
 ## Next up
-- **T-006, T-013, T-014 are all on hold (2026-10-17): the human is reevaluating whether to use
-  Vultr at all**, separate from the earlier "account not set up yet" blocker. Don't start any of
-  them until that's settled — ask first if it looks resolved, don't assume.
-- **T-006** deploy to Vultr, scoped to the **Toronto region** specifically (patient data stays
-  in Canada — see `docs/ARCHITECTURE.md`'s "Vultr usage beyond hosting", added 2026-10-17 by the
-  pitch lane at the human's request). `UPLOAD_DIR` files aren't served back yet (no
-  `GET /api/uploads/:file`); decide before deploy whether uploads need to survive a container
-  restart (volume mount) or just need to exist long enough for the demo. Registering a domain and
-  HTTPS are external, possibly-irreversible actions (DNS, a paid registration) — confirm scope
-  with the human before doing either. As of 2026-10-17 the human is still setting up the Vultr
-  account; no `VULTR_API_KEY` or CLI exists in this environment yet, and no Dockerfile exists
-  yet either — both are still needed before anything can actually deploy.
+- **T-013, T-014 stay on hold** until T-006 (this pass) is actually done and verified reachable.
 - **T-013** (new 2026-10-17, core, depends on T-006): nightly scheduled job on the Vultr server
   that re-runs `/api/engine/run` for every patient. Required, not optional — silence detection
   and trend/projection aging are both functions of wall-clock time, not of any ingest event, so
