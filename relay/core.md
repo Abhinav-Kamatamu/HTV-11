@@ -7,10 +7,10 @@
 T-001 to T-004 done and pushed (lane has nothing in flight). Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is now SEEDED (run 2026-10-17, twice, idempotent): 24 patients, 13,634 observations, 101 lab reports, 20 meals, 12 symptom logs, 0 flags; `obs_daily/weekly/monthly` refreshed. SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
 
 ## In flight
-(none)
+- **T-005** API routes. Plan: read `node_modules/next/dist/docs/` for the Next 16 route-handler API, then scaffold all routes from ARCHITECTURE.md §API as stubs (static/mock JSON) so clinician/patient lanes are unblocked immediately. Then wire them for real: ingest routes call `src/ai/gemini.ts` extractors + write `observations`/`meals`/`symptom_logs`/`lab_reports`; `/api/engine/run` calls `src/engine/evaluate.ts` + `flags.ts` and persists flags; `/api/clinician/patients` calls `rankPatients`; `/api/patients/:id/summary` and `/messages`, `/api/flags/:id/{validate,dismiss}` hit the DB directly. Zod-validate every body per CLAUDE.md.
 
 ## Next up
-- **T-005** API routes (stubs first, then real; read `node_modules/next/dist/docs/` first), or **T-007** SQL vitals math (the seed now has data to verify against; use `epoch_days = ts_ms / 86400000`). T-009 (scale mode) and T-011 (extend the seed) also unblocked.
+- After T-005: **T-007** SQL vitals math (the seed now has data to verify against; use `epoch_days = ts_ms / 86400000`). T-009 (scale mode) also unblocked.
 - **T-011 leftovers:** `hdl`, `neck_cm`, weekly `sleep_*` check-ins, a step change in Patient B's home BP (the seed BP is flat at 141/88 for now), Patient C 3 criteria met + 2 unknown, one silent patient (every seed patient currently logs through yesterday).
 - Optional hardening: get Tiger's CA and move to `sslmode=verify-full` (DECISIONS 03:40).
 
