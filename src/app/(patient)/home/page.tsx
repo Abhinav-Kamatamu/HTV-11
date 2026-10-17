@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { Camera, MessageCircle } from "lucide-react";
+import { Camera, Moon, MessageCircle } from "lucide-react";
 import { getDb } from "@/db/client";
 import { getPatientSummary, listMessages } from "@/app/api/_lib/engine-db";
 import { STORY_IDS } from "@/db/seed/ids";
@@ -75,6 +75,15 @@ async function HomeContent({ searchParams }: { searchParams: Promise<{ patient?:
             render={
               <Link href={`/symptoms?patient=${patientId}`}>
                 <MessageCircle /> How I&apos;m feeling
+              </Link>
+            }
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            render={
+              <Link href={`/sleep?patient=${patientId}`}>
+                <Moon /> Sleep check-in
               </Link>
             }
           />

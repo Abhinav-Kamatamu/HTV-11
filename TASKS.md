@@ -53,7 +53,7 @@ pushing (see CLAUDE.md §2). One `doing` task per lane at a time.
 | T-061 | patient | Camera upload for meal + device photo with result preview | done | T-060 |
 | T-062 | patient | Symptom chat (with red-flag "seek care now" response) | done | T-060 |
 | T-063 | patient | Lab report upload | done | T-061 |
-| T-064 | patient | Weekly sleep check-in: three yes/no taps (snoring, tired, observed apnea) plus optional hours slept, neck circumference asked once; writes observations per RISK_ENGINE §1. Fixed form, no Gemini | doing (patient) | T-060 |
+| T-064 | patient | Weekly sleep check-in: three yes/no taps (snoring, tired, observed apnea) plus optional hours slept, neck circumference asked once; writes observations per RISK_ENGINE §1. Fixed form, no Gemini | done | T-060 |
 | T-080 | pitch | Devpost draft, architecture diagram, 3-min demo script rehearsal | todo | |
 | T-081 | pitch | DEV.to write-up (MLH DEV prize) | todo | |
 | T-082 | pitch | Demo props: printed BP monitor photo, sample lab PDF, backup screen recording | todo | |

@@ -4,28 +4,52 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-060 through T-063 done. T-064 claimed, in progress.
+T-060 through T-064 done. Patient lane's TASKS.md board is now empty.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-064: weekly sleep check-in. New `src/app/(patient)/sleep/` page + client form (three yes/no
-taps, optional hours slept; neck_cm field shown only if the patient has no `neck_cm`
-observation yet, per RISK_ENGINE §4b "asked once"). A `"use server"` action in that same folder
-(no API route — none exists for this per the prior Gotcha) inserts observations
-(`sleep_snoring`/`sleep_tired`/`sleep_observed_apnea` sharing one `ts` so `evaluate.ts`'s
-`sleepCheckins()` can join them, plus optional `sleep_hours`/`neck_cm`), `source: "manual"`,
-then calls `runEngineForPatient`. New header button on `/home` linking to it. No Gemini, no
-risk score shown to the patient (CLAUDE.md §4).
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-064: weekly sleep check-in, fixed form, no Gemini. No API route exists for this
-  (not listed in ARCHITECTURE.md) — write it as a server action in this lane's folder
-  (same pattern `home/page.tsx` already uses: import `getDb`/`engine-db` directly)
-  rather than adding a route under core's `src/app/api`.
+- No open patient-lane tasks in TASKS.md right now. Check with the team / `docs/DECISIONS.md`
+  for anything new before picking up other lanes' work.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- T-064: `src/app/(patient)/sleep/` (page + `sleep-checkin-form.tsx` + `actions.ts`). No API
+  route exists for this (not in ARCHITECTURE.md), so it's a `"use server"` action in this lane's
+  folder that imports `getDb`/`@/db/schema`/engine-db's `requirePatient`/`runEngineForPatient`
+  directly — same pattern `home/page.tsx` already uses, per the prior Gotcha. The three required
+  check-in observations (`sleep_snoring`, `sleep_tired`, `sleep_observed_apnea`) are written with
+  one shared `ts` on purpose: `evaluate.ts`'s `sleepCheckins()` joins them by exact `ts`, so
+  writing them at slightly different times would silently drop the check-in from STOP-Bang.
+  `sleep_hours` and `neck_cm` are optional extra rows on the same `ts`. The form only shows the
+  neck-circumference input when the patient has no `neck_cm` observation yet (RISK_ENGINE §4b:
+  "asked once at intake") — checked via a plain `select ... order by ts desc limit 1` in
+  `page.tsx`, not a new engine-db helper, since it's a one-off query. All 25 seeded patients
+  already have `neck_cm` from intake, so that field never actually renders against the current
+  seed; verified the conditional is wired correctly by confirming `missing neck_cm: 0` against
+  the live DB and reading the (hidden) field out of the render path for Patient A, not by finding
+  a patient without one. Local units map (`sleep_snoring`/`sleep_tired`/`sleep_observed_apnea`:
+  `"0/1"`, `sleep_hours`: `"h"`, `neck_cm`: `"cm"`) is defined inline in `actions.ts`, same
+  per-route-local-map convention as `MACRO_UNITS` in `/api/ingest/meal`. No risk score or
+  STOP-Bang band is ever sent back to the client (CLAUDE.md §4) — the action just returns
+  `{ok: true}` or `{ok: false, error}`.
+- T-064 was smoke-tested against the shared Tiger Cloud DB by exercising the exact same
+  insert + `runEngineForPatient` call the action makes (one-off `scripts/__smoke-*.ts`, run with
+  `npx tsx --env-file-if-exists=.env.local`, deleted after): confirmed STOP-Bang scored the new
+  check-in (`score: 3, band: 'intermediate'` for Patient A with snoring=1, tired=1, apnea=0, plus
+  her existing age/neck/BMI/pressure/male items), then deleted the exact test rows and re-ran the
+  engine so the flags table matches the pre-test state (same revert convention as T-061/062/063).
+  Also confirmed `/sleep` and `/home` render the right copy via `curl` against a local
+  `next dev` instance. Did **not** click through the Yes/No toggle buttons or submit in an actual
+  browser — no browser-automation tool was available in that session; if something looks off in
+  the live demo, start there (`sleep-checkin-form.tsx`'s `useTransition` + `startTransition` call
+  into `submitSleepCheckin`).
+- tsx *can* resolve the `@/...` tsconfig path alias transitively (verified directly) — the
+  earlier T-062 Gotcha about using relative imports in one-off scripts still works and is a fine
+  convention to keep, but don't assume it's required for every future script.
 - T-063: `UploadCard` (`upload-card.tsx`) now takes `kind: "meal" | "device" | "labs"`. The
   per-kind `COPY` map carries the multipart field name (`photo` for meal/device, `doc` for
   labs — matches `/api/ingest/labs`'s `readUploadedFile(formData, "doc")`), the `accept` string,
