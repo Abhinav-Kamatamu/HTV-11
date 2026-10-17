@@ -4,22 +4,26 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-001 to T-005 done and pushed (lane has nothing in flight). Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below). SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
+T-001 to T-005, T-007 done and pushed. Tiger Cloud is the only database (PostgreSQL 18.6, `timescaledb` 2.30.2, `timescaledb_toolkit` 1.26.0). The DB is SEEDED: 25 patients, flags table is populated by running `/api/engine/run` (empty right after a reseed — that's expected, see seed Gotcha below). SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
 
 T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + engine + Gemini), skipping the stub phase since the engine/db wiring was already straightforward: `src/app/api/_lib/{http,engine-db,gemini,uploads}.ts` are the shared glue, one `route.ts` per endpoint. Smoke-tested live against Tiger Cloud + real Gemini (see Gotchas) — queue ranking, validate/dismiss/message, and the symptom red-flag path all confirmed working before committing.
 
 ## In flight
-(none)
+- **T-008** silent patients. Plan: `heartbeat_agg`/`dead_ranges` per patient over daily-vitals metrics (`HEARTBEAT_METRICS`), trim the leading dead range from window start (confirmed gotcha below), derive the same `{lastTs, daysSince, activeDays}` shape as `detectSilence`, and write a parity test against it over all seed patients (only patient 25 silent on the default seed). Then wire it into `loadPatientRecord`/`listQueue` in place of the engine's pure fallback.
 
 ## Next up
-- **T-007** SQL vitals math (the seed now has data to verify against; use `epoch_days = ts_ms / 86400000`). T-009 (scale mode) also unblocked.
-- **T-008** silent patients (needs T-007 first per TASKS.md, but note `/api/engine/run` already derives silence via the engine's pure `detectSilence` as a fallback — T-008's heartbeat SQL only needs to replace that fallback, not add a new code path).
+- **T-009** scale mode (`--scale 1000`) once T-008 lands.
 - **T-006** deploy to Vultr: `UPLOAD_DIR` files aren't served back yet (no `GET /api/uploads/:file`); decide before deploy whether uploads need to survive a container restart (volume mount) or just need to exist long enough for the demo.
 - **T-011 leftovers:** `hdl`, `neck_cm`, weekly `sleep_*` check-ins, a step change in Patient B's home BP (the seed BP is flat at 141/88 for now), Patient C 3 criteria met + 2 unknown, one silent patient (every seed patient currently logs through yesterday).
 - Optional hardening: get Tiger's CA and move to `sslmode=verify-full` (DECISIONS 03:40).
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **Vitals SQL (T-007, `src/db/vitals.ts`)**
+  - `olsFitSql(db, {patientId, metric, aggregate?, sinceMs?})` returns the exact `OlsFit` shape from `src/engine/trends.ts`, computed via `rollup(stats)` + `slope()`/`intercept()`/`determination_coeff()`/`sum_x()`/`sum_y()`/`num_vals()` over `obs_daily` (default) or `obs_weekly`/`obs_monthly`. Reuse `trends.ts`'s own `slopePerYear`/`crossingDays` on the result rather than reimplementing — that's the point of matching the shape.
+  - Crossing day = `(threshold − intercept()) / slope()`, converted from an absolute epoch day to "days from now" exactly like `crossingDays()` does (`− now/DAY_MS`); chose this over `x_intercept()` since it needs no second `value − threshold` aggregate (DECISIONS 2026-10-17).
+  - Verified via `npm run db:verify-vitals` (`scripts/verify-vitals-sql.ts`, not part of `npm test` — same no-DB-in-the-suite convention as `timescale.test.ts`): 150/150 patient × vitals-metric pairs matched the pure-TS OLS exactly on the live seed.
+  - `determination_coeff()` is null when a series has no variance; `mapFitRow` maps that to `r2 = 1` to match `olsFit`'s `syy === 0` branch.
 - **API routes (T-005, `src/app/api/`)**
   - Shared lib in `src/app/api/_lib/`: `http.ts` (`ok`/`parseJson`/`withErrors`/`ApiError`), `engine-db.ts` (every DB+engine query/mutation the routes use — `loadPatientRecord`, `runEngineForPatient`, `listQueue`, `getPatientSummary`, `validateFlag`, `dismissFlag`, `createMessageForFlag`, `requirePatient`), `gemini.ts` (lazy `getGeminiClient()`, throws a 503 `ApiError` if `GEMINI_API_KEY`/`GEMINI_MODEL` aren't set rather than crashing route load), `uploads.ts` (`readUploadedFile` writes to `UPLOAD_DIR`, returns `{storedPath, base64, mimeType}`).
   - `/api/engine/run` upserts flags by `(patientId, condition)` among `status = 'new'` rows (same id kept, so the clinician UI doesn't churn on re-run); a condition that stops firing is left alone, not auto-resolved (DECISIONS 2026-10-17). Every ingest route (`meal`/`device`/`labs`/`symptom`) calls it after writing, per ARCHITECTURE.md ("Engine runs on every ingest").
