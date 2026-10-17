@@ -39,3 +39,5 @@ the live benchmark numbers (T-083). Architecture diagram + demo script come afte
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->
+
+- 2026-10-17 T-081 done: `pitch/DEV_POST.md` drafted (published: false). Placeholders to fill: benchmark numbers (T-083), links, cover image. Publish after the event with the DEV challenge tag.
