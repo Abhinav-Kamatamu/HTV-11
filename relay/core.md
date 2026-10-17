@@ -14,7 +14,8 @@ T-005 built all ten routes from ARCHITECTURE.md §API directly as real (DB + eng
 (none)
 
 ## Next up
-- **T-006** deploy to Vultr — the only task left in the core lane. `UPLOAD_DIR` files aren't served back yet (no `GET /api/uploads/:file`); decide before deploy whether uploads need to survive a container restart (volume mount) or just need to exist long enough for the demo. Registering a domain and HTTPS are external, possibly-irreversible actions (DNS, a paid registration) — confirm scope with the human before doing either.
+- **T-012** (new 2026-10-17, clinician session flagged it while building T-048): batch `/api/benchmark/run`'s 3 vitals-OLS paths from a per-patient-per-metric loop (150 awaited round trips each) into one query per path, so the continuous-aggregate win shows up live at the default 25-patient demo scale instead of being swamped by network RTT. Already diagnosed, not a mystery — see Gotchas below.
+- **T-006** deploy to Vultr. `UPLOAD_DIR` files aren't served back yet (no `GET /api/uploads/:file`); decide before deploy whether uploads need to survive a container restart (volume mount) or just need to exist long enough for the demo. Registering a domain and HTTPS are external, possibly-irreversible actions (DNS, a paid registration) — confirm scope with the human before doing either.
 - Optional hardening: get Tiger's CA and move to `sslmode=verify-full` (DECISIONS 03:40).
 
 ## Gotchas
