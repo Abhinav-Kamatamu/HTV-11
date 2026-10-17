@@ -35,13 +35,13 @@ docs/, pitch/             lane: pitch
 ## Data model (first cut)
 
 ```sql
-patients(id, name, dob, sex, clinician_id, intake jsonb, created_at)
+patients(id, name, dob, sex, clinician_id, intake jsonb, synthetic bool, created_at)
 clinicians(id, name)
 observations(patient_id, ts, metric, value, unit, source, confidence, raw_ref)   -- hypertable on ts
 meals(id, patient_id, ts, photo_url, items jsonb, kcal, carbs_g, protein_g, fat_g, fibre_g, sodium_mg, confidence)
 symptom_logs(id, patient_id, ts, text, codes jsonb, red_flag bool)
 lab_reports(id, patient_id, collected_at, file_url, extracted jsonb)
-flags(id, patient_id, created_at, condition, kind, severity, title, evidence jsonb, rule, source_ids text[],
+flags(id, patient_id, created_at, condition, kind, severity, title, points int, contributions jsonb, evidence jsonb, rule, source_ids text[],
       status, clinician_note, resolved_at)
 messages(id, patient_id, flag_id, ts, body, read_at)
 ```
