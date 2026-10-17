@@ -55,6 +55,8 @@ src/
   db/                     lane: core   (schema.ts, migrations, seed/)
   engine/                 lane: engine (scores.ts, trends.ts, symptoms.ts, flags.ts, sources.ts, *.test.ts)
   ai/                     lane: engine (gemini.ts, prompts/, schemas.ts)
+  app/(clinician)/lab/... lane: lab    (stretch, gated — see TASKS.md T-090 to T-093)
+  lab/                    lane: lab    (stretch, gated — Papiers.ai autoresearch challenge)
 docs/, pitch/             lane: pitch
 ```
 

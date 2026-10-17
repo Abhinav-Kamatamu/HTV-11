@@ -18,6 +18,11 @@ T-042 through T-048 done. Clinician lane's task list (TASKS.md) is now empty —
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **New stretch lane `lab` (2026-10-17) claims a subfolder here: `src/app/(clinician)/lab`** (Papiers
+  autoresearch challenge, TASKS.md T-090 to T-093, gated until the main demo flow works — see
+  `relay/lab.md`). Nothing built there yet. When it is, expect a new nav/page under this route group
+  owned by the `lab` lane, not this one; flag it here again if the lab lane ends up touching anything
+  outside that subfolder.
 - **A live `/api/benchmark/run` call took ~60s against the shared Tiger Cloud seed when click-tested
   (not a timeout, just real: 25 patients x 6 vitals metrics x 5 warm runs, for 3 paths, plus a
   silence scan and a full engine re-run).** `benchmark-runner.tsx`'s "Running…" button state has no

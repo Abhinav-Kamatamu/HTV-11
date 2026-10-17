@@ -22,6 +22,7 @@ lane_paths() {
     clinician) echo "src/app/(clinician)" ;;
     patient)   echo "src/app/(patient)" ;;
     pitch)     echo "docs pitch" ;;
+    lab)       echo "src/lab src/app/(clinician)/lab" ;;
     *)         echo "" ;;
   esac
 }

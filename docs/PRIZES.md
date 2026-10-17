@@ -26,7 +26,7 @@ Check the Devpost rules for how many tracks a submission can enter and list them
 
 | Prize | Why maybe | Cost to aim |
 |---|---|---|
-| Papiers.ai (4x Claude Max 5x) | Full brief not read yet (Google Doc needs a browser). Theme is humans + AI agents doing research together | Stretch "evidence agent" in SPEC §7. Read the brief first, only build if it matches |
+| Papiers.ai (4x Claude Max 5x) | Brief read 2026-10-17: humans + AI agents doing research together | Stretch "autoresearch lab" in SPEC §7, lane `lab` (TASKS.md T-090 to T-093, DECISIONS.md 2026-10-17): hidden-ground-truth evaluation harness on the `--scale` seed plus a Gemini agent loop that proposes one config change at a time, cites the clinician feedback behind each choice, and asks the clinician on any trade-off, with a lab UI showing the experiment history. Gated: do not start before the main demo flow works end-to-end |
 
 ## Not a fit (don't chase)
 

@@ -109,5 +109,10 @@ PointClickCare framing: the clinician dashboard *is* the care-team tool. Optiona
 - Grocery receipt photo -> diet pattern (ultra-processed share, sugary drinks) with far less effort than per-meal photos
 - Visit note paste -> problem list extraction
 - Weekly patient digest
-- Evidence agent (Papiers angle): for a validated flag, agent pulls recent guideline/papers, clinician
-  marks which are relevant, building a per-patient evidence trail
+- Autoresearch evaluation lab (Papiers angle, lane `lab`, gated until the main demo flow works, see
+  TASKS.md T-090 to T-093): a hidden-ground-truth cohort on the `--scale` seed (who crosses a
+  diagnostic threshold within N months, withheld from the engine), an evaluation harness
+  (sensitivity, false-alarm rate, median lead time, flags per 100 patients), a Gemini agent loop that
+  proposes one engine-config change at a time, cites which clinician feedback drove each choice, and
+  asks the clinician when two configs trade off, plus a lab UI (experiment timeline, metrics chart,
+  config diffs, feedback panel, human-influence markers)
