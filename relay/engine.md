@@ -9,7 +9,10 @@ Left in order: T-031 points (severity floors), T-024 flags, then T-025/T-026 (sr
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-031 `points.ts` + `evaluate` orchestrator (started 2026-10-17):
+- Contribution/Severity types, point table + per-layer cap 4 + bands as constants; PatientRecord in (obs by metric, symptom logs, intake, optional silence), per-condition ledgers out.
+- Builders per condition (t2d, ckd, htn, masld, mets, osa, engagement) reusing labtrend/trends/changepoint/scores/symptoms/cooccurrence/stopbang; severity = bands then floors; red-flag = patient-level urgent.
+- Tests on generateSeed(): A review (~7), B review, C monitor, Walter Hughes urgent, Rosa Delgado engagement monitor + stale.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
