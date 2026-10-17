@@ -114,12 +114,16 @@ Count how many of five criteria are met (Alberti 2009 harmonized definition, ver
 | 2 | Triglycerides | ≥ 1.7 mmol/L or on treatment | `triglycerides`, intake meds |
 | 3 | HDL cholesterol | < 1.0 (men) / < 1.3 (women) mmol/L or on treatment | `hdl`, intake meds |
 | 4 | Blood pressure | ≥ 130 systolic or ≥ 85 diastolic, or on treatment | home BP 30-day mean, intake meds |
-| 5 | Fasting glucose | ≥ 5.6 mmol/L or on treatment | `fpg`, intake meds |
+| 5 | Fasting glucose | ≥ 5.6 mmol/L (no treatment override) | `fpg` |
 
 Rules:
 - A criterion with no recent data is **unknown**, never "not met". The UI shows "2 met, 2 unknown (TG, HDL
   missing)" so the clinician sees what a lab order would settle.
 - Use the latest value within 12 months for labs and waist, the 30-day mean for BP.
+- "On treatment" (non-empty `intake.medications`) only turns an existing, measured, sub-threshold reading
+  into **met** for TG, HDL and BP; it never turns **unknown** into met, and it never applies to fasting
+  glucose (DECISIONS.md 2026-10-17, engine). The synthetic seed has no glucose-lowering drug, so this keeps
+  Patient C's HDL/FPG — never drawn — at "unknown" rather than wrongly "met".
 - ≥ 3 met fires a `mets` flag at `monitor`. This is a count of guideline criteria for clinician review,
   not a diagnosis.
 

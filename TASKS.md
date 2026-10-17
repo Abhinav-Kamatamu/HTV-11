@@ -37,7 +37,7 @@ pushing (see CLAUDE.md §2). One `doing` task per lane at a time.
 | T-026 | engine | `explainFlag` (takes the ledger, may not change points, cites only sources on the rows) + `visitSummary` restricted to sources.ts | todo | T-024 T-025 |
 | T-027 | engine | `labtrend.ts`: Mann-Kendall (exact p for n ≤ 10, tie-corrected normal above), Sen's slope and intercept, 90% slope interval, crossing date with range, gate (n ≥ 4, p < 0.10). Known-answer tests: monotone series give p = 2/n! (n=3: 0.333, n=4: 0.083, n=5: 0.017) | done | T-001 |
 | T-028 | engine | `changepoint.ts`: tabular CUSUM on daily vitals (28-day reference, k = 0.5, h = 5, skip missing days, re-baseline after alarm), returns change date and shift size + tests incl. a no-change series that must not alarm | done | T-001 |
-| T-029 | engine | `cooccurrence.ts`: metabolic syndrome 3-of-5 with met/not met/unknown per criterion, treatment counts as met, sex-specific cutoffs + tests | doing | T-020 |
+| T-029 | engine | `cooccurrence.ts`: metabolic syndrome 3-of-5 with met/not met/unknown per criterion, treatment counts as met, sex-specific cutoffs + tests | done | T-020 |
 | T-030 | engine | `stopbang.ts`: score from sleep check-in answers + record (age, sex, BMI, neck, treated BP), lower-bound handling for missing items, 90-day freshness + tests | todo | T-020 |
 | T-031 | engine | `points.ts`: Contribution type, point values, per-layer cap of 4, severity bands, reason templates (engine-written, not Gemini), `gap` layer fed by T-008 and stale-trend marking + tests that the three story patients land in the SPEC §6 severities | todo | T-021 T-022 T-023 T-027 T-028 T-029 T-030 |
 | T-040 | clinician | Role switcher + layout shell | todo | T-001 |
