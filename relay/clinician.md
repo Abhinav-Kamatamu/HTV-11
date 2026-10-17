@@ -4,7 +4,8 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-042 through T-048 done. Clinician lane's task list (TASKS.md) is now empty — see Next up.
+T-042 through T-048 done. No open board tasks; this session did a human-requested UI pass
+(no T-ID, same pattern as the earlier "pitch session" UI pass logged below).
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
@@ -15,9 +16,30 @@ T-042 through T-048 done. Clinician lane's task list (TASKS.md) is now empty —
 - No open clinician tasks. Next teammate picking up this lane should check TASKS.md for new work
   (or help another lane — patient and pitch are both unstarted) rather than run `/pickup clinician`
   expecting something queued.
+- Human asked whether to also rework the "Why do this in the database?" speed-check chart at the
+  bottom of `/benchmark` (live run now shows continuousAggregate 41ms / rawTable 39ms /
+  fetchAndCompute 105ms on the 25-patient seed — a real ~2.7x story, not the flat numbers an
+  earlier Gotcha entry warned about, since T-012's batching fix landed since then). Left as-is
+  pending their answer.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **Re-added the sunset-glow `body::before` background and the translucent/blurred header
+  (`border-border/60 bg-card/75 backdrop-blur-xl`) that a same-day earlier session added then
+  reverted** (`862374e` blurred glow -> `d343ee3` removed it back to flat cream pages). Human
+  explicitly asked for the gradient on every screen, not just the home page — see commit `df4699b`.
+  If asked to tone it down again, adjust rather than delete outright; this is the second time it's
+  flipped today.
+- **Replaced `src/app/favicon.ico` (the default Next.js "N" icon — never updated since scaffold)
+  with `src/app/icon.tsx`** (Next's dynamic icon convention, rendered via `next/og`
+  `ImageResponse`), tracing lucide-react's `heart-pulse` path so the browser tab matches the
+  in-app logo. `ImageResponse`/satori can't parse `oklch()` — the two colors used (navy `#0c1628`,
+  orange `#f2763c`) are the `--background`(dark)/`--primary` tokens pre-converted to hex by hand;
+  if the palette in `globals.css` changes, this file goes stale silently (no type error) and needs
+  updating by hand too.
+- Touched `src/app/(patient)/layout.tsx` for the header/footer styling to match (cross-lane, kept
+  minimal — just the two className changes that mirror the clinician layout, no patient-lane logic
+  touched).
 - **New stretch lane `lab` (2026-10-17) claims a subfolder here: `src/app/(clinician)/lab`** (Papiers
   autoresearch challenge, TASKS.md T-090 to T-093, gated until the main demo flow works — see
   `relay/lab.md`). Nothing built there yet. When it is, expect a new nav/page under this route group
