@@ -11,6 +11,16 @@ running `/api/engine/run` (empty right after a reseed — that's expected, see s
 SQL slopes per year match the stories: Priya (A) HbA1c +0.20, Marcus (B) eGFR -5.93 and home BP
 141.2/87.7, Daniel (C) ALT +6.1 and GGT +9.4.
 
+**Live bug found + fixed (2026-10-17): every Gemini feature was broken on the deployed site**
+(meal/device/lab photo extraction, symptom coding, explanations, visit summaries) — all silently
+fell back to "needs_manual_entry"/"couldn't read that photo clearly" on a 404 from the Gemini
+API. Root cause: `GEMINI_MODEL` in `.env.local` had its explanatory comment on the same line
+(`GEMINI_MODEL=gemini-3.8-flash    # comment`); Node's `--env-file` strips that fine, but
+`docker run --env-file` does not, so the live container's model id was the whole line including
+the comment text — not a real model. Fixed `.env.example`'s formatting (comments now always on
+their own line), human fixed `.env.local` the same way, redeployed just that file + recreated
+the container. Live-reverified: meal photo now extracts correctly. See Gotchas and DECISIONS.md.
+
 **T-015 done (2026-10-17): the app is live at https://cleanbillof.health** (and `www.`). GoDaddy
 domain, DNS A records -> 155.138.148.86, Caddy 2.11.7 on the box doing automatic HTTPS (Let's
 Encrypt via ACME HTTP-01) and reverse-proxying to the `undertow` container, which now only binds
@@ -63,6 +73,16 @@ See Gotchas for the body-required bug this surfaced and why the setup needed a h
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **`.env.local`/`.env.example` inline comments break under Docker (2026-10-17, see
+  DECISIONS.md)** — never write `KEY=value    # comment` on one line in either file. Node's
+  `--env-file` (local dev, scripts) strips a trailing `#` comment; `docker run --env-file` does
+  not, so the comment text becomes part of the literal env var value inside the container. This
+  silently broke `GEMINI_MODEL` (every Gemini feature 404'd) and `DEMO_MODE` (currently unread
+  by any code, so no visible effect, but would break the same way the moment something reads it)
+  on the live deploy. Always put the comment on its own line above the `KEY=` line. If any
+  Gemini feature on the live site starts failing with `needs_manual_entry` again, check
+  `docker exec undertow printenv GEMINI_MODEL` on 155.138.148.86 first — a clean value with no
+  trailing text is the thing to verify, not the input photo quality.
 - **HTTPS + domain (T-015, cleanbillof.health)**
   - DNS: GoDaddy `A` records, `@` -> 155.138.148.86 and `www` -> 155.138.148.86. The domain came
     with GoDaddy's default parking DNS already set (an `ALIAS` for `@` and a wildcard `CNAME`
