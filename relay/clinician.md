@@ -46,15 +46,14 @@ produced exactly what T-045 asks for, see Gotchas).
   the engine's own pre-persistence `Flag` type, always "new" before a DB round-trip); the summary's
   per-flag mapping now overrides it with the real `row.status` so the UI can tell a validated flag
   from a fresh one. One-line change to a core-owned file; flagged here per CLAUDE.md §2.
-- **Didn't live-test Validate/Dismiss against the shared Tiger Cloud seed** — auto-mode blocked the
-  mutating POST as a shared-resource write, and the user chose to skip rather than grant it. The fetch
-  calls in `flag-card.tsx` were checked by hand against `/api/flags/[id]/validate`'s and `/dismiss`'s
-  zod schemas (method, URL, body shape all match), and the queue/flag-list rendering was verified live
-  against the seed, but the actual click-through was only confirmed visually (buttons render, states
-  wire up), not exercised end-to-end. **Click-test this once before the demo**, ideally on a non-story
-  patient (e.g. Rosa Delgado, id `...019`, has one `engagement` flag) and restore it afterward with
-  `POST /api/engine/run { "patientId": "..." }` — re-running the engine only ever touches `status =
-  'new'` rows, so it will not resurrect a row you validated, only add a fresh one alongside it.
+- **Dismiss click-tested live against the shared Tiger Cloud seed** (user granted permission after
+  auto-mode first blocked it as a shared-resource write): clicked Dismiss on Rosa Delgado's
+  (`...019`) `engagement` flag at `/patients/5eed0002-0000-4000-8000-000000000019`, confirmed the
+  flag card disappeared and the page showed "No open flags.", then restored her with `POST
+  /api/engine/run { "patientId": "5eed0002-...019" }` and confirmed via `/api/clinician/patients`
+  that she's back to `monitor`/1 flag, same reason text. Validate's request body differs only by
+  field name (`note` vs `reason`) and was already schema-checked against `/api/flags/[id]/validate`,
+  not separately click-tested — low risk, same code path.
 - Added `src/components/ui/` has no new components this round; flag-card/lab-chart reuse `Badge` and
   `Button` as-is. New non-`ui/` files: `patients/[id]/page.tsx`, `lab-charts.ts` (pure chart-data
   builder over `labtrend.ts`), `lab-chart.tsx` (Recharts, client), `flag-card.tsx` (client).
@@ -119,8 +118,8 @@ produced exactly what T-045 asks for, see Gotchas).
   with `npm run lint`, `tsc --noEmit`, `npm test` (279 passing), and headless-Chrome screenshots of
   all three story patients (Priya/Marcus/Daniel) against the live 25-patient seed — no console
   errors, numbers match the story (Priya's HbA1c crossing in ~24mo, Marcus's eGFR crossing in ~26mo).
-  Did not live-click Validate/Dismiss against the shared DB (see Gotchas) — do that once before the
-  demo.
+  Also live-click-tested Dismiss against the shared DB on a non-story patient and restored it via
+  `/api/engine/run` afterward (see Gotchas) — confirmed working end to end.
 - 2026-10-17: T-041 done — `/queue` now reads the real `listQueue()`/`/api/clinician/patients`
   ranking (T-005 was already built, so this skipped the planned mock-data phase), with a
   `?severity=` filter (All/Urgent/Review/Monitor/None) and a new `Badge` component. Hit and fixed a
