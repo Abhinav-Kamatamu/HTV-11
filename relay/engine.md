@@ -9,7 +9,11 @@ Left in order: T-025/T-026 (src/ai, Gemini; needs a key in `.env.local`). Flags 
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-025: `src/ai/schemas.ts` (zod schemas for extractMeal/extractDevice/extractLabs/codeSymptoms, RISK_ENGINE §10)
++ `src/ai/gemini.ts` (`@google/genai` client, model from `GEMINI_MODEL`, JSON-schema calls, validate with zod,
+retry once on failure then return a `confidence: 0` fallback). `codeSymptoms` restricted to `isSymptomCode`
+from `src/engine/symptoms.ts`. Adding `@google/genai` dep + a DECISIONS.md line. Tests mock the client
+(no live network calls in Vitest); run `npm run lint && npm test` before pushing.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
