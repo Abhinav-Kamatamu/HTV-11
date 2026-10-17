@@ -4,11 +4,16 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-041 done.
+T-042 doing.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-042: patient detail route `/patients/[id]` (Suspense + connection() like `/queue`), reusing
+`getPatientSummary` for data. Add a chart-data builder in `_lib/engine-db.ts` over `labtrend.ts` for
+the 4 trend-eligible lab metrics (hba1c, fpg, egfr, acr — DECISIONS 2026-10-17 06:00) with Sen
+projection line + threshold bands, plus plain line charts for the chart-only labs (alt, ast, ggt,
+platelets, hdl). Adding `recharts` as a new dep (none installed yet) — will record in DECISIONS.md.
+Wiring queue rows to link here. Then T-043 (flag "why" panel) right after, same session.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
