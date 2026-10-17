@@ -8,7 +8,13 @@ T-042, T-043, T-044, T-045, T-046 done.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-(none)
+T-047: "stopped logging" badge/filter + stale chart label.
+- Extend `listQueue()` (`src/app/api/_lib/engine-db.ts`) to call `listSilenceSql` (T-008,
+  `src/db/silence.ts`) and add `silence: Silence | null` to `QueuePatient`.
+- `/queue` page: badge on silent patients' rows + a filter option alongside the severity filter.
+- `lab-chart.tsx`/`vitals-chart.tsx`: a muted band/label over the trailing gap when the record's
+  `silence` is set (contributions already carry `stale`, this adds the chart-level annotation).
+- Verify lint/tsc/test + a live screenshot against a known-silent seed patient (Rosa Delgado, `...019`).
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
