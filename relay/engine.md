@@ -19,9 +19,10 @@ T-020 done (thresholds verified, `src/engine/sources.ts` written). Next: T-021 a
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
 - Import constants from `THRESHOLDS` in `src/engine/sources.ts`; cite by `SourceId` (`isSourceId` guards Gemini output).
-- Team decisions (DECISIONS 04:40): home BP is 130/80 (2025), CANRISK has a very high band (>= 43), Patient A's HbA1c is 4.9 to 5.4 twice-yearly.
-- Patient A projections: 5.5 in ~0.5 yr, 6.0 in ~3.0 yr, 6.5 in ~5.5 yr. T-031 must decide which line the trend layer targets; 6.0 sits on the 3 yr gate.
-- Ava Roy and Elena Tremblay (controls) are high on diastolic alone at 130/80; watch their severities in T-031.
+- Team decisions (DECISIONS 04:40 and 05:10): home BP is 130/80 (2025), CANRISK has a very high band (>= 43), Patient A's HbA1c is 4.65 to 5.4 twice-yearly, trend layer targets 6.0 (~2.0 yr out), never project 6.5.
+- Seed contract: `intake.height_cm`, `intake.medications` (string[]), obs `hdl`, `neck_cm`, `sleep_snoring|tired|observed_apnea` (0/1, weekly, source synthetic). Patient C has no `hdl`/`fpg` rows on purpose (unknown criteria). Treatment = non-empty `medications`.
+- Preview of layers on the seed (throwaway script, not the engine): A t2d 4 monitor (+ symptoms up to 3), B ckd 8 review / htn 6 review / osa monitor, C mets 3 monitor, urgent case only monitor by points so it relies on the red-flag bypass.
+- Controls now stay under 130/80. 4 controls show a spurious n=4 HDL trend and one a GGT trend (p=0.083 to 0.096); the engine must not act on metrics without a threshold.
 - Rapid eGFR decline rule is KDIGO 2012 (secondary-verified); KDIGO 2024 does not contain it.
 - Shell tip: do not `cd` into the scratchpad in Bash; it changes the working directory for later calls.
 

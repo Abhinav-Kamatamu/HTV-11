@@ -171,12 +171,12 @@ type Contribution = {
 Example ledger for Patient A (HbA1c condition):
 
 ```
-+2  trend         HbA1c rising 0.2 %/yr (Sen), Mann-Kendall p = 0.003, reaches the 6.0% prediabetes line in ~3 yr (range 2 to 5)  [Diabetes Canada CPG]
++2  trend         HbA1c rising 0.3 %/yr (Sen), Mann-Kendall p = 0.003, reaches the 6.0% prediabetes line in ~2 yr  [Diabetes Canada CPG]
 +3  symptom       Thirst reported 9 times in 6 weeks (decayed cluster score 3.4, capped at 3)
 +1  changepoint   Weight shifted up ~2 kg around Sep 3
 +1  sleep         STOP-Bang 3 (intermediate)                                                                  [Chung 2016]
 = 7 points -> review
-(the latest HbA1c, 5.4%, is under every Diabetes Canada line, so the threshold layer correctly adds nothing; the 6.5% diabetes line is ~5.5 yr away, outside the 3 yr horizon)
+(the latest HbA1c, 5.4%, is under every Diabetes Canada line, so the threshold layer correctly adds nothing; the 6.5% diabetes line is ~3.7 yr away, outside the 3 yr horizon, so we never project it)
 ```
 
 Rules:

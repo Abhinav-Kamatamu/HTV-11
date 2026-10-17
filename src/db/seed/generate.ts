@@ -30,19 +30,29 @@ export const UNITS = {
   ggt: "U/L",
   platelets: "10^9/L",
   triglycerides: "mmol/L",
+  hdl: "mmol/L",
   waist_cm: "cm",
+  neck_cm: "cm",
   weight_kg: "kg",
   bp_systolic: "mmHg",
   bp_diastolic: "mmHg",
   resting_hr: "bpm",
   steps: "steps",
   sleep_hours: "h",
+  sleep_snoring: "0/1",
+  sleep_tired: "0/1",
+  sleep_observed_apnea: "0/1",
 } as const;
 type Metric = keyof typeof UNITS;
-type LabMetric = Exclude<Metric, "waist_cm" | "weight_kg" | "bp_systolic" | "bp_diastolic" | "resting_hr" | "steps" | "sleep_hours">;
+type LabMetric = Exclude<
+  Metric,
+  | "waist_cm" | "neck_cm" | "weight_kg" | "bp_systolic" | "bp_diastolic" | "resting_hr" | "steps" | "sleep_hours"
+  | "sleep_snoring" | "sleep_tired" | "sleep_observed_apnea"
+>;
 const LAB_METRICS: LabMetric[] = [
-  "hba1c", "fpg", "creatinine", "egfr", "acr", "alt", "ast", "ggt", "platelets", "triglycerides",
+  "hba1c", "fpg", "creatinine", "egfr", "acr", "alt", "ast", "ggt", "platelets", "triglycerides", "hdl",
 ];
+const SLEEP_CHECKIN_WEEKS = 13;
 
 const round = (x: number, digits: number) => Math.round(x * 10 ** digits) / 10 ** digits;
 
@@ -80,8 +90,10 @@ type Profile = {
   story: "A" | "B" | "C" | "urgent" | "control";
   labCount: number; // lab points, oldest first
   labIntervalDays?: number; // days between lab draws, default 365 (yearly)
-  /** Explicit lab series (oldest first) for story patients; everything else is a noisy flat baseline. */
+  /** Explicit lab series (oldest first) for story patients. Anything not listed is a flat baseline, with noise on controls only. */
   labs: Partial<Record<LabMetric, number[]>>;
+  /** Labs never ordered for this patient, so the engine sees "unknown" rather than a value. */
+  skipLabs?: LabMetric[];
   targetEgfr?: number[];
   hba1cPerYear?: number; // controls that drift slowly
   waist: { latest: number; perYear: number };
@@ -90,6 +102,11 @@ type Profile = {
     hr: number; steps: number; sleep: number;
   };
   missingRate: number;
+  heightCm: number; // intake; BMI = weight / height² for STOP-Bang and the Fatty Liver Index
+  neckCm: number; // intake, asked once
+  medications: string[]; // intake; treatment counts as "met" for the BP, TG and HDL criteria
+  /** Weekly sleep check-in answers, the same every week for story patients. */
+  sleepCheckin: { snoring: 0 | 1; tired: 0 | 1; observedApnea: 0 | 1 };
   symptoms?: { daysAgo: number; text: string; codes: string[]; redFlag?: boolean }[];
   meals?: boolean;
 };
@@ -108,28 +125,34 @@ const A_SYMPTOMS = [
 
 const STORY_PROFILES: Profile[] = [
   {
-    // A: creeping HbA1c (six twice-yearly points, +0.2/yr, every one below 5.5 so each result "looked normal"), rising waist.
+    // A: creeping HbA1c (six twice-yearly points, +0.3/yr, every one below 5.5 so each result "looked normal";
+    // projected to reach the 6.0 prediabetes line in about 2 years), rising waist.
     num: 1, name: "Priya Nair", sex: "female", age: 52, story: "A", labCount: 6, labIntervalDays: 182,
     labs: {
-      hba1c: [4.9, 5.0, 5.1, 5.2, 5.3, 5.4],
-      fpg: [4.8, 4.9, 5.0, 5.1, 5.1, 5.2],
+      hba1c: [4.65, 4.8, 4.95, 5.1, 5.25, 5.4],
+      fpg: [4.7, 4.8, 4.9, 5.0, 5.1, 5.2],
       triglycerides: [1.2, 1.3, 1.4, 1.5, 1.6, 1.7],
     },
+    targetEgfr: [95, 95, 95, 95, 95, 95],
     waist: { latest: 96, perYear: 4 },
     vitals: { sys: 124, dia: 78, weight: 79, weightPerDay: 0.02, hr: 72, steps: 5200, sleep: 6.8 },
     missingRate: 0.02,
+    heightCm: 165, neckCm: 36, medications: [],
+    sleepCheckin: { snoring: 1, tired: 1, observedApnea: 0 }, // STOP-Bang 3: S, T, age > 50
     symptoms: A_SYMPTOMS.map(([daysAgo, text, codes]) => ({ daysAgo, text, codes: [...codes] })),
     meals: true,
   },
   {
     // B: eGFR falling ~6/yr while still above 60, ACR rising to A2, home BP averaging about 141/88.
     // T-011 adds a step change to the BP series for CUSUM.
-    num: 2, name: "Marcus Webb", sex: "male", age: 61, story: "B", labCount: 5,
-    targetEgfr: [88, 82, 76, 70, 64],
-    labs: { acr: [1.0, 1.4, 1.9, 2.5, 3.2], hba1c: [5.4, 5.4, 5.5, 5.4, 5.5] },
+    num: 2, name: "Marcus Webb", sex: "male", age: 61, story: "B", labCount: 6, labIntervalDays: 182,
+    targetEgfr: [88, 85, 82, 79, 76, 73],
+    labs: { acr: [1.2, 1.6, 2.0, 2.4, 2.8, 3.2], hba1c: [5.4, 5.4, 5.4, 5.4, 5.4, 5.4] },
     waist: { latest: 101, perYear: 0.5 },
     vitals: { sys: 141, dia: 88, weight: 92, hr: 70, steps: 6100, sleep: 6.9 },
     missingRate: 0.02,
+    heightCm: 178, neckCm: 43, medications: [],
+    sleepCheckin: { snoring: 1, tired: 1, observedApnea: 1 }, // STOP-Bang 7: S, T, O, P (home BP), age, neck, male
     symptoms: [
       { daysAgo: 20, text: "Ankles a bit swollen by evening.", codes: ["edema"] },
       { daysAgo: 9, text: "Slight headache most mornings this week.", codes: ["headache"] },
@@ -138,17 +161,23 @@ const STORY_PROFILES: Profile[] = [
   },
   {
     // C: ALT/GGT/TG creeping, FIB-4 stays low (about 0.8).
-    num: 3, name: "Daniel Okafor", sex: "male", age: 47, story: "C", labCount: 5,
+    num: 3, name: "Daniel Okafor", sex: "male", age: 47, story: "C", labCount: 6, labIntervalDays: 182,
     labs: {
-      alt: [28, 32, 38, 45, 52],
-      ast: [24, 25, 27, 29, 31],
-      ggt: [30, 36, 44, 55, 68],
-      platelets: [255, 250, 248, 246, 244],
-      triglycerides: [1.3, 1.5, 1.7, 1.9, 2.2],
+      alt: [28, 31, 35, 40, 46, 52],
+      ast: [24, 25, 26, 28, 29, 31],
+      ggt: [30, 35, 41, 49, 58, 68],
+      platelets: [255, 252, 249, 247, 245, 243],
+      triglycerides: [1.3, 1.5, 1.7, 1.9, 2.1, 2.2],
     },
+    targetEgfr: [100, 100, 100, 100, 100, 100],
+    // Metabolic syndrome 3 of 5: waist and triglycerides met, BP met by treatment (home BP is controlled),
+    // HDL and fasting glucose never ordered so they are unknown.
+    skipLabs: ["hdl", "fpg"],
     waist: { latest: 104, perYear: 3 },
     vitals: { sys: 126, dia: 80, weight: 98, weightPerDay: 0.015, hr: 74, steps: 7000, sleep: 6.5 },
     missingRate: 0.02,
+    heightCm: 180, neckCm: 39, medications: ["amlodipine 5 mg"],
+    sleepCheckin: { snoring: 0, tired: 0, observedApnea: 0 }, // STOP-Bang 2: male, treated BP
     meals: true,
   },
   {
@@ -159,6 +188,8 @@ const STORY_PROFILES: Profile[] = [
     waist: { latest: 109, perYear: 1 },
     vitals: { sys: 152, dia: 94, sysPerDay: 0.2, weight: 96, hr: 80, steps: 3100, sleep: 5.9 },
     missingRate: 0.02,
+    heightCm: 175, neckCm: 38, medications: [],
+    sleepCheckin: { snoring: 0, tired: 0, observedApnea: 0 },
     symptoms: [
       { daysAgo: 1, text: "Crushing chest pain and short of breath since this morning.", codes: ["chest_pain", "dyspnea"], redFlag: true },
     ],
@@ -173,6 +204,7 @@ const SLOW_DRIFT_CONTROLS = 3; // the last few controls creep slowly, so the que
 
 function controlProfile(i: number): Profile {
   const rng = subRng(SEED, 100 + i);
+  const extra = subRng(SEED, 300 + i); // intake fields on their own stream so they never shift the vitals above
   const sex: Sex = rng.chance(0.5) ? "female" : "male";
   const drifting = i >= CONTROL_COUNT - SLOW_DRIFT_CONTROLS;
   return {
@@ -187,13 +219,18 @@ function controlProfile(i: number): Profile {
     waist: { latest: round(rng.uniform(sex === "female" ? 76 : 86, sex === "female" ? 90 : 100), 0), perYear: 0 },
     vitals: {
       sys: round(rng.uniform(112, 128), 0),
-      dia: round(rng.uniform(70, 80), 0),
+      // Compressed to 70 to 76 so no control sits on the 130/80 home BP line (diastolic alone would trip it).
+      dia: 70 + Math.round((round(rng.uniform(70, 80), 0) - 70) * 0.6),
       weight: round(rng.uniform(sex === "female" ? 58 : 72, sex === "female" ? 78 : 92), 0),
       hr: round(rng.uniform(60, 76), 0),
       steps: round(rng.uniform(5500, 10500), -2),
       sleep: round(rng.uniform(6.8, 8.2), 1),
     },
     missingRate: 0.05,
+    heightCm: round(sex === "female" ? extra.uniform(155, 172) : extra.uniform(168, 188), 0),
+    neckCm: round(sex === "female" ? extra.uniform(31, 36) : extra.uniform(36, 39.5), 0),
+    medications: [],
+    sleepCheckin: { snoring: 0, tired: 0, observedApnea: 0 },
   };
 }
 
@@ -218,24 +255,28 @@ function ageAt(dobMs: number, atMs: number): number {
   return (atMs - dobMs) / (365.25 * DAY);
 }
 
-function labValue(p: Profile, metric: LabMetric, i: number, rng: Rng, age: number): number {
+function labValue(p: Profile, metric: LabMetric, i: number, rng: Rng, age: number, hdlRng: Rng): number {
   const explicit = p.labs[metric]?.[i];
   if (explicit !== undefined) return explicit;
   const female = p.sex === "female";
+  // Noise only on controls. Story patients still draw from the stream (so it stays aligned) but get a flat baseline.
+  const noisy = p.story === "control" ? 1 : 0;
+  const n = (sd: number) => rng.normal(0, sd) * noisy;
   switch (metric) {
-    case "hba1c": return round(5.2 + (p.hba1cPerYear ?? 0) * i + rng.normal(0, 0.08), 1);
-    case "fpg": return round(5.0 + (p.hba1cPerYear ?? 0) * 2 * i + rng.normal(0, 0.15), 1);
+    case "hba1c": return round(5.2 + (p.hba1cPerYear ?? 0) * i + n(0.08), 1);
+    case "fpg": return round(5.0 + (p.hba1cPerYear ?? 0) * 2 * i + n(0.15), 1);
     case "creatinine": {
       if (p.targetEgfr) return round(creatinineForEgfr(p.targetEgfr[i], age, p.sex), 0);
-      return round((female ? 66 : 82) + rng.normal(0, 3), 0);
+      return round((female ? 66 : 82) + n(3), 0);
     }
     case "egfr": return NaN; // derived from creatinine by the caller
-    case "acr": return round(Math.max(0.2, 0.6 + rng.normal(0, 0.15)), 1);
-    case "alt": return round(female ? 20 + rng.normal(0, 3) : 26 + rng.normal(0, 4), 0);
-    case "ast": return round(female ? 20 + rng.normal(0, 3) : 24 + rng.normal(0, 3), 0);
-    case "ggt": return round(female ? 20 + rng.normal(0, 4) : 28 + rng.normal(0, 5), 0);
-    case "platelets": return round(260 + rng.normal(0, 15), 0);
-    case "triglycerides": return round(Math.max(0.5, 1.2 + rng.normal(0, 0.15)), 2);
+    case "acr": return round(Math.max(0.2, 0.6 + n(0.15)), 1);
+    case "alt": return round(female ? 20 + n(3) : 26 + n(4), 0);
+    case "ast": return round(female ? 20 + n(3) : 24 + n(3), 0);
+    case "ggt": return round(female ? 20 + n(4) : 28 + n(5), 0);
+    case "platelets": return round(260 + n(15), 0);
+    case "triglycerides": return round(Math.max(0.5, 1.2 + n(0.15)), 2);
+    case "hdl": return round(Math.max(0.7, (female ? 1.5 : 1.2) + hdlRng.normal(0, female ? 0.12 : 0.1) * noisy), 2);
   }
 }
 
@@ -253,6 +294,7 @@ export function generateSeed(anchor: Date): SeedData {
 
   for (const p of allProfiles()) {
     const rng = subRng(SEED, p.num);
+    const hdlRng = subRng(SEED, 400 + p.num); // own stream, so adding HDL never shifts the existing draws
     const id = p.num <= 4 ? Object.values(STORY_IDS)[p.num - 1] : seedId(ID_KIND.patient, p.num);
     const dobMs = Date.UTC(
       anchor.getUTCFullYear() - p.age - 1, (p.num * 5) % 12, 1 + ((p.num * 7) % 28),
@@ -263,7 +305,7 @@ export function generateSeed(anchor: Date): SeedData {
       dob: dateOnly(dobMs),
       sex: p.sex,
       clinicianId: CLINICIAN_ID,
-      intake: { story: p.story },
+      intake: { story: p.story, height_cm: p.heightCm, medications: p.medications },
       synthetic: true,
       createdAt: new Date(anchorMs - (VITALS_DAYS + 30) * DAY),
     });
@@ -279,14 +321,15 @@ export function generateSeed(anchor: Date): SeedData {
       const ts = anchorMs - (20 + (p.labCount - 1 - i) * (p.labIntervalDays ?? 365) + rng.int(-10, 10)) * DAY + 8 * HOUR;
       const age = ageAt(dobMs, ts);
       const values = {} as Record<LabMetric, number>;
-      for (const m of LAB_METRICS) values[m] = labValue(p, m, i, rng, age);
+      for (const m of LAB_METRICS) values[m] = labValue(p, m, i, rng, age, hdlRng);
       values.egfr = round(ckdEpi2021(values.creatinine, age, p.sex), 0);
-      for (const m of LAB_METRICS) obs(ts, m, values[m]);
+      const drawn = LAB_METRICS.filter((m) => !p.skipLabs?.includes(m));
+      for (const m of drawn) obs(ts, m, values[m]);
       data.labReports.push({
         id: seedId(ID_KIND.labReport, p.num * 1000 + i),
         patientId: id,
         collectedAt: new Date(ts),
-        extracted: Object.fromEntries(LAB_METRICS.map((m) => [m, { value: values[m], unit: UNITS[m] }])),
+        extracted: Object.fromEntries(drawn.map((m) => [m, { value: values[m], unit: UNITS[m] }])),
       });
     }
 
@@ -295,6 +338,17 @@ export function generateSeed(anchor: Date): SeedData {
       const monthsBack = (7 - q) * 3;
       const ts = anchorMs - (5 + monthsBack * 30) * DAY + 9 * HOUR;
       obs(ts, "waist_cm", round(p.waist.latest - p.waist.perYear * (monthsBack / 12) + rng.normal(0, 0.4), 1));
+    }
+
+    // Neck circumference, asked once at intake (just before the 90 day window).
+    obs(anchorMs - (VITALS_DAYS + 28) * DAY + 10 * HOUR, "neck_cm", p.neckCm);
+
+    // Weekly sleep check-in: three yes/no taps (RISK_ENGINE §4b), thirteen weeks ending last week.
+    for (let w = SLEEP_CHECKIN_WEEKS - 1; w >= 0; w--) {
+      const ts = anchorMs - (2 + 7 * w) * DAY + 20 * HOUR;
+      obs(ts, "sleep_snoring", p.sleepCheckin.snoring);
+      obs(ts, "sleep_tired", p.sleepCheckin.tired);
+      obs(ts, "sleep_observed_apnea", p.sleepCheckin.observedApnea);
     }
 
     // 90 days of daily vitals ending yesterday. Missing days are skipped entirely.

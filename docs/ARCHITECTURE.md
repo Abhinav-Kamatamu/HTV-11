@@ -74,10 +74,16 @@ Deterministic generator (seeded RNG) so every teammate gets identical data:
   every patient meant to show a lab trend has at least that many
 - `--scale 1000` generates 1,000 patients from the same seeded RNG for the benchmark page
   (`docs/RISK_ENGINE.md` §9); the default stays ~25
-- Story patients (match `docs/SPEC.md` §6): **A** creeping HbA1c (six twice-yearly points, 4.9 to 5.4, every one below 5.5)
-  + waist + thirst/fatigue chat,
-  **B** eGFR decline ~6/yr + ACR rising + home BP ~141/88, **C** ALT/GGT/TG creeping with low FIB-4,
-  plus a few clean controls and one urgent case for the top of the list
+- Story patients (match `docs/SPEC.md` §6) have six lab draws every ~182 days (~2.5 years), strictly
+  monotone on their story metrics and flat, noise-free baselines elsewhere (noise only on controls):
+  **A** creeping HbA1c (4.65, 4.8, 4.95, 5.1, 5.25, 5.4, every one below 5.5, projected to reach 6.0 in
+  ~2 years) + waist + thirst/fatigue chat, STOP-Bang 3;
+  **B** eGFR decline ~6/yr + ACR rising + home BP ~141/88, STOP-Bang 7 (high);
+  **C** ALT/GGT/TG creeping with low FIB-4, metabolic syndrome 3 of 5 met (waist, TG, BP by treatment)
+  with HDL and fasting glucose never drawn (2 unknown);
+  plus clean controls (home BP below 130/80) and one urgent case for the top of the list
+- Intake lives in `patients.intake` (`height_cm`, `medications`); neck circumference, `hdl` and the weekly
+  sleep check-ins (`sleep_snoring`, `sleep_tired`, `sleep_observed_apnea`, 0/1) are observations
 - Every synthetic row has `source = 'synthetic'` and the UI shows a "Synthetic demo data" badge
 
 ## Env vars (`.env.example`)

@@ -64,8 +64,9 @@ PointClickCare framing: the clinician dashboard *is* the care-team tool. Optiona
       STOP-Bang, points ledger
 - [ ] Tiger Data does the vitals math: `stats_agg` slopes, R² and crossing dates in continuous
       aggregates, `heartbeat_agg` for silent patients
-- [ ] Synthetic dataset: ~25 patients, 3 to 5 years of labs (six twice-yearly HbA1c points, 4.9 to 5.4, for Patient A),
-      90 days of daily data, with 3 story patients (§6)
+- [ ] Synthetic dataset: ~25 patients, controls with 3 to 5 yearly lab points, the three story patients with
+      six twice-yearly lab draws over ~2.5 years (Patient A's HbA1c runs 4.65 to 5.4), 90 days of daily
+      data, weekly sleep check-ins, and 3 story patients (§6)
 - [ ] Scale-mode seed (1,000 patients) and a `/benchmark` page that measures the Tiger Data path
       against the alternatives. The demo itself stays on the 25-patient dataset
 - [ ] Deployed at a public URL
@@ -83,11 +84,11 @@ PointClickCare framing: the clinician dashboard *is* the care-team tool. Optiona
 
 ## 6. Demo script (3 minutes, the thing we are building toward)
 
-1. (20s) Hook: six twice-yearly HbA1c results, 4.9 up to 5.4. Every one is below 5.5%, Diabetes Canada's
-   lowest line, and each looked normal. Flip to the chart: the projection line crosses 5.5% (the "at
-   risk" range) within about six months and reaches the 6.0% prediabetes line in about three years.
-   (The chart shows all six points; Mann-Kendall needs 4 or more points to call a trend, so the seed for
-   Patient A must not stop at three. The 6.5% diabetes line is ~5.5 years out, so do not claim it.)
+1. (20s) Hook: six twice-yearly HbA1c results, 4.65 up to 5.4. Every one is below 5.5%, Diabetes Canada's
+   lowest line, and each looked normal. Flip to the chart: the patient is projected to reach prediabetes
+   (6.0%) in about 2 years. (The chart shows all six points; Mann-Kendall needs 4 or more points to call a
+   trend, so the seed for Patient A must not stop at three. Never claim diabetes: the 6.5% line is beyond
+   the 3 year horizon and the engine does not project it.)
 2. (40s) Clinician dashboard: queue sorted by risk. Open **Patient A** (creeping HbA1c, rising waist,
    symptom chat mentioning thirst and fatigue 9 times in 6 weeks). Show the "why" panel: the points
    ledger, one line per layer with its reason and citation, adding up to the severity.
