@@ -19,8 +19,9 @@ T-020 done (thresholds verified, `src/engine/sources.ts` written). Next: T-021 a
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
 - Import constants from `THRESHOLDS` in `src/engine/sources.ts`; cite by `SourceId` (`isSourceId` guards Gemini output).
-- Open team call: home BP 135/85 (2020) vs 130/80 (2025 primary-care guideline). Engine uses 135/85; see DECISIONS.md 03:30.
-- Patient A's HbA1c 5.5 to 5.9 is Diabetes Canada's "at risk" tier, not "normal"; keep demo wording to "under the 6.0% line".
+- Team decisions (DECISIONS 04:40): home BP is 130/80 (2025), CANRISK has a very high band (>= 43), Patient A's HbA1c is 4.9 to 5.4 twice-yearly.
+- Patient A projections: 5.5 in ~0.5 yr, 6.0 in ~3.0 yr, 6.5 in ~5.5 yr. T-031 must decide which line the trend layer targets; 6.0 sits on the 3 yr gate.
+- Ava Roy and Elena Tremblay (controls) are high on diastolic alone at 130/80; watch their severities in T-031.
 - Rapid eGFR decline rule is KDIGO 2012 (secondary-verified); KDIGO 2024 does not contain it.
 - Shell tip: do not `cd` into the scratchpad in Bash; it changes the working directory for later calls.
 

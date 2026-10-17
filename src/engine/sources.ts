@@ -30,7 +30,15 @@ export const SOURCES = {
     year: 2018,
     url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC5833636",
     verification: "primary",
-    notes: "Three bands only: low < 21, moderate 21 to 32, high >= 33. A 'very high >= 43' band was in the first draft of RISK_ENGINE.md and could not be found in any PHAC source, so it was removed. Validation papers use 21 as the cut-off under age 40.",
+    notes: "PHAC papers define low < 21, moderate 21 to 32, high >= 33 (no fourth band). The 'very high' band comes from canrisk_ctfphc. Validation papers use 21 as the cut-off under age 40.",
+  },
+  canrisk_ctfphc: {
+    title: "CANRISK: Type 2 diabetes screening tool (Canadian Task Force on Preventive Health Care)",
+    publisher: "Canadian Task Force on Preventive Health Care",
+    year: 2024,
+    url: "https://canadiantaskforce.ca/tools-resources/type-2-diabetes-2/type-2-diabetes-canrisk/",
+    verification: "primary",
+    notes: "Read on 2026-10-17: 0 to 32 low to moderate, 33 to 42 high, 43 to 87 very high. This page merges low and moderate; the engine only scores high and very high. Year is the page's approximate vintage, not a citation date.",
   },
   kdigo_2024: {
     title: "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of Chronic Kidney Disease",
@@ -54,7 +62,7 @@ export const SOURCES = {
     year: 2020,
     url: "https://onlinecjc.ca/article/S0828-282X(20)30191-4/fulltext",
     verification: "secondary",
-    notes: "Home BP >= 135/85 mmHg is high. Home protocol: 2 morning and 2 evening readings for 7 days. Superseded for primary care by htn_canada_2025.",
+    notes: "Home BP >= 135/85 mmHg is high. Home protocol: 2 morning and 2 evening readings for 7 days. Superseded for primary care by htn_canada_2025; kept as THRESHOLDS.homeBpLegacy2020.",
   },
   htn_canada_2025: {
     title: "Hypertension Canada guideline for the diagnosis and treatment of hypertension in adults in primary care",
@@ -62,7 +70,7 @@ export const SOURCES = {
     year: 2025,
     url: "https://doi.org/10.1503/cmaj.241770",
     verification: "primary",
-    notes: "Single threshold >= 130/80 mmHg for office, daytime ambulatory and home BP; treatment target systolic < 130. Read in Appendix 2 (responses to frequent questions). The engine still uses 135/85 for home BP, see DECISIONS.md.",
+    notes: "Single threshold >= 130/80 mmHg for office, daytime ambulatory and home BP; treatment target systolic < 130. Read in Appendix 2 (responses to frequent questions). The engine uses this for home BP (DECISIONS.md, 2026-10-17).",
   },
   aasld_2023: {
     title: "AASLD Practice Guidance on the clinical assessment and management of nonalcoholic fatty liver disease",
@@ -158,8 +166,8 @@ export const THRESHOLDS = {
   // HbA1c in %, FPG in mmol/L. "Prediabetes" starts at the From value; diabetes at diabetesFrom.
   hba1c: { atRiskFrom: 5.5, prediabetesFrom: 6.0, diabetesFrom: 6.5, source: "diabetes_canada_2018" },
   fpg: { atRiskFrom: 5.6, prediabetesFrom: 6.1, diabetesFrom: 7.0, source: "diabetes_canada_2018" },
-  // CANRISK score points. No "very high" band exists.
-  canrisk: { moderateFrom: 21, highFrom: 33, source: "canrisk" },
+  // CANRISK score points (maximum 87). moderate from PHAC; high and very high are on both PHAC and the Task Force page.
+  canrisk: { moderateFrom: 21, highFrom: 33, veryHighFrom: 43, max: 87, source: "canrisk_ctfphc" },
   ckd: {
     egfrCkdBelow: 60, // mL/min/1.73m², CKD when below this for more than 3 months (G3a is 45 to 59)
     chronicityMonths: 3,
@@ -169,9 +177,9 @@ export const THRESHOLDS = {
     source: "kdigo_2024",
     rapidDeclineSource: "kdigo_2012",
   },
-  // Home BP average over >= 7 days, mmHg. Engine default is the 2020 value, see DECISIONS.md.
-  homeBp: { systolic: 135, diastolic: 85, source: "htn_canada_2020", minDays: 7 },
-  homeBpPrimaryCare2025: { systolic: 130, diastolic: 80, source: "htn_canada_2025" },
+  // Home BP average over >= 7 days, mmHg; high when systolic OR diastolic reaches the value.
+  homeBp: { systolic: 130, diastolic: 80, source: "htn_canada_2025", minDays: 7 },
+  homeBpLegacy2020: { systolic: 135, diastolic: 85, source: "htn_canada_2020" },
   fib4: { low: 1.3, lowAge65Plus: 2.0, high: 2.67, age65Plus: 65, source: "aasld_2023" },
   fli: { ruleOutBelow: 30, ruleInFrom: 60, triglyceridesMmolToMgDl: 88.57, source: "fli_bedogni_2006" },
   mets: {

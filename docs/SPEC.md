@@ -64,7 +64,7 @@ PointClickCare framing: the clinician dashboard *is* the care-team tool. Optiona
       STOP-Bang, points ledger
 - [ ] Tiger Data does the vitals math: `stats_agg` slopes, R² and crossing dates in continuous
       aggregates, `heartbeat_agg` for silent patients
-- [ ] Synthetic dataset: ~25 patients, 3 to 5 years of labs (at least 6 HbA1c points for Patient A),
+- [ ] Synthetic dataset: ~25 patients, 3 to 5 years of labs (six twice-yearly HbA1c points, 4.9 to 5.4, for Patient A),
       90 days of daily data, with 3 story patients (§6)
 - [ ] Scale-mode seed (1,000 patients) and a `/benchmark` page that measures the Tiger Data path
       against the alternatives. The demo itself stays on the 25-patient dataset
@@ -83,11 +83,11 @@ PointClickCare framing: the clinician dashboard *is* the care-team tool. Optiona
 
 ## 6. Demo script (3 minutes, the thing we are building toward)
 
-1. (20s) Hook: three yearly HbA1c results: 5.5, 5.7, 5.9. Each one is under Diabetes Canada's 6.0%
-   prediabetes line and each got "looks fine". Flip to the chart: the projection line enters the
-   prediabetes range next year and reaches 6.5% within about three years. (The chart shows the
-   patient's full history, at least 6 points ending in those three; Mann-Kendall needs 4 or more
-   points to call a trend, so the seed for Patient A must not stop at three.)
+1. (20s) Hook: six twice-yearly HbA1c results, 4.9 up to 5.4. Every one is below 5.5%, Diabetes Canada's
+   lowest line, and each looked normal. Flip to the chart: the projection line crosses 5.5% (the "at
+   risk" range) within about six months and reaches the 6.0% prediabetes line in about three years.
+   (The chart shows all six points; Mann-Kendall needs 4 or more points to call a trend, so the seed for
+   Patient A must not stop at three. The 6.5% diabetes line is ~5.5 years out, so do not claim it.)
 2. (40s) Clinician dashboard: queue sorted by risk. Open **Patient A** (creeping HbA1c, rising waist,
    symptom chat mentioning thirst and fatigue 9 times in 6 weeks). Show the "why" panel: the points
    ledger, one line per layer with its reason and citation, adding up to the severity.

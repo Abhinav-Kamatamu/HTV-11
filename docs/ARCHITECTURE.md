@@ -74,7 +74,7 @@ Deterministic generator (seeded RNG) so every teammate gets identical data:
   every patient meant to show a lab trend has at least that many
 - `--scale 1000` generates 1,000 patients from the same seeded RNG for the benchmark page
   (`docs/RISK_ENGINE.md` §9); the default stays ~25
-- Story patients (match `docs/SPEC.md` §6): **A** creeping HbA1c (at least 6 points, ending 5.5, 5.7, 5.9)
+- Story patients (match `docs/SPEC.md` §6): **A** creeping HbA1c (six twice-yearly points, 4.9 to 5.4, every one below 5.5)
   + waist + thirst/fatigue chat,
   **B** eGFR decline ~6/yr + ACR rising + home BP ~141/88, **C** ALT/GGT/TG creeping with low FIB-4,
   plus a few clean controls and one urgent case for the top of the list

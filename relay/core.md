@@ -16,6 +16,7 @@ T-001 to T-004 done and pushed (lane has nothing in flight). Tiger Cloud is the 
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- (engine lane touched `src/db/seed/generate.ts` + test on 2026-10-17) Patient A now has six twice-yearly labs via the new `labIntervalDays` profile field, HbA1c 4.9 to 5.4, fpg 4.8 to 5.2; DB re-seeded, counts unchanged. T-011 must keep this.
 - **Seed (`src/db/seed/`)**
   - `npm run db:seed` (`--dry-run`, `--anchor YYYY-MM-DD`). Shared DB: announce before running. It deletes only rows whose uuid starts `5eed` (plus `source = 'synthetic'` observations of those patients), upserts patients, then refreshes the aggregates. Flags and messages on seed patients ARE deleted on reseed (engine output); rows from real use survive.
   - Fixed ids in `ids.ts` (`STORY_IDS`: A `5eed0002-...-001`, B `...002`, C `...003`, urgent `...004`). Timestamps are relative to the anchor (midnight UTC today): vitals are the 90 days ending yesterday, so after a day or two rerun the seed to keep "recent" data recent.

@@ -15,3 +15,6 @@ uploads/
 # typescript / next
 *.tsbuildinfo
 next-env.d.ts
+
+# scratch notes to copy/paste, never committed
+*.local.md

@@ -78,7 +78,8 @@ type Profile = {
   sex: Sex;
   age: number;
   story: "A" | "B" | "C" | "urgent" | "control";
-  labCount: number; // yearly lab points, oldest first
+  labCount: number; // lab points, oldest first
+  labIntervalDays?: number; // days between lab draws, default 365 (yearly)
   /** Explicit lab series (oldest first) for story patients; everything else is a noisy flat baseline. */
   labs: Partial<Record<LabMetric, number[]>>;
   targetEgfr?: number[];
@@ -107,11 +108,11 @@ const A_SYMPTOMS = [
 
 const STORY_PROFILES: Profile[] = [
   {
-    // A: creeping HbA1c (six yearly points, +0.2/yr, all under the 6.0 line until the last is 5.9), rising waist.
-    num: 1, name: "Priya Nair", sex: "female", age: 52, story: "A", labCount: 6,
+    // A: creeping HbA1c (six twice-yearly points, +0.2/yr, every one below 5.5 so each result "looked normal"), rising waist.
+    num: 1, name: "Priya Nair", sex: "female", age: 52, story: "A", labCount: 6, labIntervalDays: 182,
     labs: {
-      hba1c: [4.9, 5.1, 5.3, 5.5, 5.7, 5.9],
-      fpg: [5.0, 5.1, 5.3, 5.4, 5.6, 5.8],
+      hba1c: [4.9, 5.0, 5.1, 5.2, 5.3, 5.4],
+      fpg: [4.8, 4.9, 5.0, 5.1, 5.1, 5.2],
       triglycerides: [1.2, 1.3, 1.4, 1.5, 1.6, 1.7],
     },
     waist: { latest: 96, perYear: 4 },
@@ -273,9 +274,9 @@ export function generateSeed(anchor: Date): SeedData {
         source: "synthetic", confidence: 1,
       });
 
-    // Labs: yearly, latest about three weeks ago.
+    // Labs: yearly unless the profile says otherwise, latest about three weeks ago.
     for (let i = 0; i < p.labCount; i++) {
-      const ts = anchorMs - (20 + (p.labCount - 1 - i) * 365 + rng.int(-10, 10)) * DAY + 8 * HOUR;
+      const ts = anchorMs - (20 + (p.labCount - 1 - i) * (p.labIntervalDays ?? 365) + rng.int(-10, 10)) * DAY + 8 * HOUR;
       const age = ageAt(dobMs, ts);
       const values = {} as Record<LabMetric, number>;
       for (const m of LAB_METRICS) values[m] = labValue(p, m, i, rng, age);

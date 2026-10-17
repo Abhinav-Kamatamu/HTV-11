@@ -43,6 +43,8 @@ describe("THRESHOLDS", () => {
     expect(fpg.atRiskFrom).toBeLessThan(fpg.prediabetesFrom);
     expect(fpg.prediabetesFrom).toBeLessThan(fpg.diabetesFrom);
     expect(canrisk.moderateFrom).toBeLessThan(canrisk.highFrom);
+    expect(canrisk.highFrom).toBeLessThan(canrisk.veryHighFrom);
+    expect(THRESHOLDS.homeBp.systolic).toBeLessThan(THRESHOLDS.homeBpLegacy2020.systolic);
     expect(fib4.low).toBeLessThan(fib4.lowAge65Plus);
     expect(fib4.lowAge65Plus).toBeLessThan(fib4.high);
     expect(stopbang.intermediateFrom).toBeLessThan(stopbang.highFrom);

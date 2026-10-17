@@ -30,11 +30,11 @@ Metrics added for the co-occurrence and sleep layers (§4): `triglycerides`, `hd
 |---|---|---|---|
 | Type 2 diabetes | HbA1c | at risk 5.5 to 5.9%, prediabetes 6.0 to 6.4%, diabetes ≥ 6.5% | Diabetes Canada CPG 2018 |
 | | Fasting plasma glucose | at risk 5.6 to 6.0, prediabetes 6.1 to 6.9 mmol/L, diabetes ≥ 7.0 | Diabetes Canada CPG 2018 |
-| | CANRISK questionnaire | < 21 low, 21 to 32 moderate, ≥ 33 high (there is no "very high" band) | PHAC CANRISK |
+| | CANRISK questionnaire | < 21 low, 21 to 32 moderate, 33 to 42 high, 43 to 87 very high (the Task Force page merges low and moderate as 0 to 32) | PHAC CANRISK, CTFPHC |
 | Chronic kidney disease | eGFR (CKD-EPI 2021) | < 60 sustained > 3 months = G3a+ (G3a is 45 to 59) | KDIGO 2024 |
 | | eGFR slope | sustained decline > 5 mL/min/1.73m²/yr = rapid | KDIGO 2012 (not in the 2024 text) |
 | | Urine ACR | 3 to 30 mg/mmol = A2, > 30 = A3 | KDIGO 2024 |
-| Hypertension | Home BP average (≥ 7 days) | ≥ 135/85 (2020). The 2025 primary-care guideline uses ≥ 130/80 for office, ambulatory and home; see DECISIONS.md | Hypertension Canada 2020 / 2025 |
+| Hypertension | Home BP average (≥ 7 days) | ≥ 130/80 (2025 primary-care guideline, same value for office, ambulatory and home). The 2020 value was 135/85, kept as `homeBpLegacy2020` | Hypertension Canada 2025 |
 | Fatty liver / fibrosis | FIB-4 = age × AST / (platelets × √ALT) | < 1.30 low, > 2.67 high (age ≥ 65: lower cutoff 2.0) | AASLD 2023 |
 | | Fatty Liver Index (TG, BMI, GGT, waist) | < 30 rules out, ≥ 60 rules in steatosis; TG enters the formula in mg/dL (mmol/L × 88.57) | Bedogni 2006 |
 | Metabolic syndrome | 5 criteria, see §4 | ≥ 3 of 5 met | Alberti 2009; waist from Health Canada 2003 (102 / 88 cm) |
@@ -124,7 +124,7 @@ circumference is asked once at intake. STOP-Bang has eight items; the engine fil
 | **S**noring loudly | sleep check-in |
 | **T**ired in the daytime | sleep check-in |
 | **O**bserved apnea | sleep check-in |
-| **P**ressure (treated hypertension) | intake meds / diagnoses, or home BP average ≥ 135/85 |
+| **P**ressure (treated hypertension) | intake meds / diagnoses, or home BP average ≥ 130/80 |
 | **B**MI > 35 | weight + height |
 | **A**ge > 50 | dob |
 | **N**eck > 40 cm | `neck_cm` from intake |
@@ -171,12 +171,12 @@ type Contribution = {
 Example ledger for Patient A (HbA1c condition):
 
 ```
-+2  trend         HbA1c rising 0.2 %/yr (Sen), Mann-Kendall p = 0.04, reaches 6.5% in ~2.8 yr (range 2 to 5)      [Diabetes Canada CPG]
++2  trend         HbA1c rising 0.2 %/yr (Sen), Mann-Kendall p = 0.003, reaches the 6.0% prediabetes line in ~3 yr (range 2 to 5)  [Diabetes Canada CPG]
 +3  symptom       Thirst reported 9 times in 6 weeks (decayed cluster score 3.4, capped at 3)
 +1  changepoint   Weight shifted up ~2 kg around Sep 3
 +1  sleep         STOP-Bang 3 (intermediate)                                                                  [Chung 2016]
 = 7 points -> review
-(the latest HbA1c, 5.9%, is under the 6.0% line, so the threshold layer correctly adds nothing)
+(the latest HbA1c, 5.4%, is under every Diabetes Canada line, so the threshold layer correctly adds nothing; the 6.5% diabetes line is ~5.5 yr away, outside the 3 yr horizon)
 ```
 
 Rules:
@@ -192,7 +192,7 @@ Starting point values (all in `points.ts`):
 | Layer | Trigger | Points |
 |---|---|---|
 | threshold | value in guideline monitor range / in diagnostic range | 2 / 4 |
-| score | CANRISK high (≥ 33); FIB-4 intermediate / high; FLI ≥ 60 | 2; 1 / 4; 2 |
+| score | CANRISK high / very high; FIB-4 intermediate / high; FLI ≥ 60 | 2 / 3; 1 / 4; 2 |
 | trend | gate passes and crossing ≤ 1 yr / 1 to 3 yr / moving toward threshold, no crossing in horizon | 4 / 2 / 1 |
 | changepoint | adverse shift / adverse shift agreeing with an open trend on the same condition | 1 / 2 |
 | symptom | decayed cluster score, rounded to 0.5 | up to 3 |

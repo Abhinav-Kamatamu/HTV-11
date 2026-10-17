@@ -31,11 +31,12 @@ describe("seed generator", () => {
     }
   });
 
-  it("Patient A: at least 6 yearly HbA1c points ending 5.5, 5.7, 5.9, all under 6.0", () => {
-    const values = series(STORY_IDS.A, "hba1c").map((o) => o.value);
-    expect(values.length).toBeGreaterThanOrEqual(6);
-    expect(values.slice(-3)).toEqual([5.5, 5.7, 5.9]);
-    expect(Math.max(...values)).toBeLessThan(6.0);
+  it("Patient A: six twice-yearly HbA1c points from 4.9 to 5.4, every one below 5.5", () => {
+    const rows = series(STORY_IDS.A, "hba1c");
+    const values = rows.map((o) => o.value);
+    expect(values).toEqual([4.9, 5.0, 5.1, 5.2, 5.3, 5.4]);
+    const gaps = rows.slice(1).map((o, i) => (+o.ts - +rows[i].ts) / 86_400_000);
+    for (const g of gaps) expect(Math.abs(g - 182)).toBeLessThanOrEqual(20);
   });
 
   it("Patient A: thirst/fatigue symptom logs, 9 inside 6 weeks", () => {
