@@ -127,6 +127,14 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* The sunset gradient from the home page, fixed behind every screen. Content sits on cream panels. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(ellipse 120% 80% at 50% 0%, oklch(0.78 0.16 55) 0%, oklch(0.6 0.16 45) 22%, oklch(0.35 0.08 290) 55%, oklch(0.2 0.045 263) 100%);
+  }
   html {
     @apply font-sans;
     -webkit-text-size-adjust: 100%;

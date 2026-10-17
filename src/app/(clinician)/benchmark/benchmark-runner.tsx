@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 // Benchmark runner (T-048): on demand, not auto-run on page load — same convention as
@@ -22,112 +21,73 @@ type BenchmarkResult = {
 };
 
 const PATH_LABELS: { key: keyof BenchmarkResult["paths"]; label: string }[] = [
-  { key: "continuousAggregate", label: "Continuous aggregate" },
-  { key: "rawTable", label: "Raw table" },
-  { key: "fetchAndCompute", label: "Fetch + compute (TS)" },
+  { key: "continuousAggregate", label: "Tiger Data summaries" },
+  { key: "rawTable", label: "Tiger Data raw readings" },
+  { key: "fetchAndCompute", label: "Pull rows, compute in app" },
 ];
-
-function formatRunTime(d: Date): string {
-  return d.toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "medium" });
-}
-
-function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1 rounded-xl border border-border bg-background p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-2xl font-semibold tracking-tight">{value}</p>
-    </div>
-  );
-}
 
 export function BenchmarkRunner() {
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
   const [result, setResult] = useState<BenchmarkResult | null>(null);
-  const [ranAt, setRanAt] = useState<Date | null>(null);
 
   async function run() {
     setState("loading");
     try {
       const res = await fetch("/api/benchmark/run", { method: "POST" });
       if (!res.ok) throw new Error(`${res.status}`);
-      const data = (await res.json()) as BenchmarkResult;
-      setResult(data);
-      setRanAt(new Date());
+      setResult((await res.json()) as BenchmarkResult);
       setState("idle");
     } catch {
       setState("error");
     }
   }
 
-  const chartRows = result
-    ? PATH_LABELS.map((p) => ({ label: p.label, ms: Math.round(result.paths[p.key].ms) }))
+  const rows = result
+    ? PATH_LABELS.map((p) => ({ ...p, ms: result.paths[p.key].ms }))
     : [];
+  const slowest = rows.length ? Math.max(...rows.map((r) => r.ms)) : 1;
+  const fastest = rows.length ? Math.min(...rows.map((r) => r.ms)) : 1;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-background p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold tracking-tight text-muted-foreground">Run</h2>
-            {ranAt && <p className="text-xs text-muted-foreground">Last run {formatRunTime(ranAt)}</p>}
-          </div>
-          <Button size="sm" disabled={state === "loading"} onClick={run}>
-            {state === "loading" ? "Running…" : result ? "Run again" : "Run"}
-          </Button>
-        </div>
-
-        {state === "error" && (
-          <p className="text-xs text-destructive">Couldn&apos;t reach the server — try again.</p>
-        )}
-        {!result && state === "idle" && (
-          <p className="text-sm text-muted-foreground">
-            Times 5 warm runs (median) of the vitals OLS fit three ways, a full silent-patient scan, and
-            a full engine re-run, against every patient currently in the database.
-          </p>
-        )}
+    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {result
+            ? `${result.patientCount.toLocaleString()} patients, ${result.paths.continuousAggregate.rows.toLocaleString()} readings. Median of 5 runs.`
+            : "Runs the comparison on the current patients. Takes a few seconds."}
+        </p>
+        <Button size="sm" disabled={state === "loading"} onClick={run}>
+          {state === "loading" ? "Running…" : result ? "Run again" : "Run speed check"}
+        </Button>
       </div>
+
+      {state === "error" && <p className="text-sm text-destructive">Couldn&apos;t reach the server, try again.</p>}
 
       {result && (
         <>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <StatTile label="Patients" value={result.patientCount.toLocaleString()} />
-            <StatTile label="Rows scanned (vitals)" value={result.paths.continuousAggregate.rows.toLocaleString()} />
-            <StatTile label="Silent patients found" value={result.silenceScan.silentPatients.toLocaleString()} />
-            <StatTile label="Flags written" value={result.engineRerun.flagsWritten.toLocaleString()} />
-          </div>
-
-          <div className="rounded-xl border border-border bg-background p-4">
-            <h3 className="mb-3 text-sm font-medium">Median ms per path</h3>
-            <div className="h-48 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartRows} layout="vertical" barSize={20}
-                  margin={{ top: 0, right: 64, bottom: 0, left: 0 }}
-                >
-                  <CartesianGrid horizontal={false} stroke="var(--color-border)" strokeDasharray="3 3" />
-                  <XAxis
-                    type="number" domain={[0, (max: number) => Math.ceil(max * 1.15)]}
-                    stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false}
+          <ul className="flex flex-col gap-3">
+            {rows.map((r) => (
+              <li key={r.key} className="flex flex-col gap-1">
+                <div className="flex items-baseline justify-between text-sm">
+                  <span className="font-medium">{r.label}</span>
+                  <span className="text-muted-foreground">{Math.round(r.ms)} ms</span>
+                </div>
+                <div className="h-2.5 w-full rounded-full bg-muted">
+                  <div
+                    className={r.ms === fastest ? "h-full rounded-full bg-primary" : "h-full rounded-full bg-primary/35"}
+                    style={{ width: `${Math.max(4, (r.ms / slowest) * 100)}%` }}
                   />
-                  <YAxis
-                    type="category" dataKey="label" stroke="var(--color-muted-foreground)" fontSize={11}
-                    tickLine={false} axisLine={false} width={140}
-                  />
-                  <Tooltip
-                    formatter={(value: number) => [`${value} ms`, "Median"]}
-                    contentStyle={{ background: "var(--color-popover)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 12 }}
-                  />
-                  <Bar dataKey="ms" fill="var(--color-chart-5)" radius={[0, 4, 4, 0]} isAnimationActive={false}>
-                    <LabelList dataKey="ms" position="right" formatter={(v: ReactNode) => `${v} ms`} fill="var(--color-muted-foreground)" fontSize={11} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Same vitals OLS fit (slope, R², threshold crossing) computed three ways: TimescaleDB
-              continuous aggregate, a raw-table SQL scan, and fetching rows to compute in TypeScript.
-            </p>
-          </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm font-medium">
+            Tiger Data is {(slowest / fastest).toFixed(1)}x faster than computing it in the app.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            A full engine re-run for everyone took {(result.engineRerun.ms / 1000).toFixed(1)} s and wrote{" "}
+            {result.engineRerun.flagsWritten} flags.
+          </p>
         </>
       )}
     </div>

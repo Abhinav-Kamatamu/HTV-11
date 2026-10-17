@@ -252,3 +252,5 @@ T-042 through T-048 done. Clinician lane's task list (TASKS.md) is now empty —
   `/queue` placeholder page, shared `RoleSwitcher` component, root `/` turned into the role-chooser
   landing page. Verified with `npm run lint`, `tsc --noEmit`, and a headless-Chrome screenshot of
   `/` and `/queue` (nav highlighting correct, no console errors).
+
+- 2026-10-17 UI pass (pitch session, human request): `/benchmark` is now a "Population scan" page. Server component reading live data via `olsFitBatchSql` (BP systolic, 90-day window) and `listSilenceSql`, timed per query, with the old speed-check runner kept at the bottom (bars instead of a chart). Linked from a card on `/queue` and the clinician nav. Sunset gradient is now `body::before` in `globals.css`, with page content on a cream panel in both layouts. NOT run against the DB (no `.env.local` on that machine): open `/benchmark` once with keys and check the BP list and timings before the demo.

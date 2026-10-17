@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { AlertTriangle, WifiOff } from "lucide-react";
+import { AlertTriangle, ArrowRight, Database, WifiOff } from "lucide-react";
 import { getDb } from "@/db/client";
 import { listQueue, type QueuePatient } from "@/app/api/_lib/engine-db";
 import { Badge } from "@/components/ui/badge";
@@ -133,6 +133,22 @@ async function QueueContent({
           <WifiOff className="size-4" /> Stopped logging
         </Link>
       </div>
+
+      <Link
+        href="/benchmark"
+        className="group flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/30"
+      >
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+          <Database className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-semibold">Population scan</span>
+          <span className="block text-sm text-muted-foreground">
+            See who is trending toward a threshold or has gone quiet, across every patient at once.
+          </span>
+        </span>
+        <ArrowRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </Link>
 
       {filtered.length === 0 ? (
         <div className="flex min-h-[30vh] flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-border bg-card text-center text-muted-foreground">

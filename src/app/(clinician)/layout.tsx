@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import Link from "next/link";
-import { Gauge } from "lucide-react";
+import { HeartPulse } from "lucide-react";
 import { RoleSwitcher } from "@/components/role-switcher";
 
 const NAV = [
   { label: "Queue", href: "/queue", ready: true },
-  { label: "Benchmark", href: "/benchmark", ready: true },
+  { label: "Population scan", href: "/benchmark", ready: true },
 ] as const;
 
 export default function ClinicianLayout({ children }: { children: ReactNode }) {
@@ -20,7 +20,7 @@ export default function ClinicianLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center justify-between gap-4 sm:justify-start sm:gap-8">
             <Link href="/queue" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-primary">
-              <Gauge className="size-5" />
+              <HeartPulse className="size-5" />
               <span className="bg-gradient-to-r from-primary to-[oklch(0.6_0.16_45)] bg-clip-text text-transparent">
                 Ripple
               </span>
@@ -54,8 +54,10 @@ export default function ClinicianLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:px-6 sm:py-8">{children}</main>
-      <footer className="border-t border-border px-4 py-4 text-center text-xs text-muted-foreground">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-3 py-4 sm:px-6 sm:py-8">
+        <div className="rounded-3xl bg-background/95 p-4 shadow-xl sm:p-8">{children}</div>
+      </main>
+      <footer className="px-4 py-5 text-center text-xs text-white/80">
         All patients shown are synthetic demo data.
       </footer>
     </div>

@@ -33,8 +33,10 @@ export default function PatientLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-5 sm:px-6 sm:py-8">{children}</main>
-      <footer className="border-t border-border px-4 py-4 text-center text-xs text-muted-foreground">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-3 py-4 sm:px-6 sm:py-8">
+        <div className="rounded-3xl bg-background/95 p-4 shadow-xl sm:p-8">{children}</div>
+      </main>
+      <footer className="px-4 py-5 text-center text-xs text-white/80">
         This is synthetic demo data, not a real person&apos;s record.
       </footer>
     </div>
