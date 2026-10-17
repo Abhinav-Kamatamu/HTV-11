@@ -4,6 +4,8 @@ import {
   LabExtractionSchema,
   MealExtractionSchema,
   SymptomCodingSchema,
+  buildExplanationSchema,
+  buildVisitSummarySchema,
 } from "./schemas";
 
 describe("MealExtractionSchema", () => {
@@ -139,6 +141,86 @@ describe("SymptomCodingSchema", () => {
       redFlag: true,
       confidence: 0.9,
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("buildExplanationSchema (explainFlag)", () => {
+  it("accepts a summary that cites only an allowed source", () => {
+    const schema = buildExplanationSchema(["diabetes_canada_2018", "mann_1945"]);
+    const result = schema.safeParse({
+      summary: "HbA1c has been rising slowly and is projected to cross the prediabetes line in about two years.",
+      citedSourceIds: ["diabetes_canada_2018"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a citation outside the sources it was given, even though the id is real", () => {
+    // kdigo_2024 is a real SourceId, just not one on this flag's contributions.
+    const schema = buildExplanationSchema(["diabetes_canada_2018"]);
+    const result = schema.safeParse({
+      summary: "This explanation cites a kidney guideline it was never shown.",
+      citedSourceIds: ["kdigo_2024"],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a made-up source id", () => {
+    const schema = buildExplanationSchema(["diabetes_canada_2018"]);
+    const result = schema.safeParse({
+      summary: "This explanation invents a citation that does not exist anywhere.",
+      citedSourceIds: ["not_a_real_source"],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("has no points field for Gemini to set", () => {
+    const schema = buildExplanationSchema(["diabetes_canada_2018"]);
+    // Passing an extra `points` field must not let it through disguised as part of the shape.
+    const result = schema.safeParse({
+      summary: "A summary long enough to pass the minimum length check easily.",
+      citedSourceIds: [],
+      points: 999,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect("points" in result.data).toBe(false);
+  });
+
+  it("allows an empty citation list when the flag's contributions carry no sources", () => {
+    const schema = buildExplanationSchema([]);
+    const result = schema.safeParse({
+      summary: "This flag is purely an engagement gap, so nothing here cites a guideline.",
+      citedSourceIds: [],
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("buildVisitSummarySchema (visitSummary)", () => {
+  it("accepts bullets that cite only sources drawn from the included flags", () => {
+    const schema = buildVisitSummarySchema(["htn_canada_2025", "kdigo_2024"]);
+    const result = schema.safeParse({
+      bullets: [
+        "Home blood pressure has averaged above the 130/80 line for over a week.",
+        "eGFR and ACR both sit in the diagnostic range on the most recent labs.",
+      ],
+      citedSourceIds: ["htn_canada_2025", "kdigo_2024"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a citation not present on any of the summarized flags", () => {
+    const schema = buildVisitSummarySchema(["htn_canada_2025"]);
+    const result = schema.safeParse({
+      bullets: ["This bullet reaches for a diabetes guideline that was never part of this visit."],
+      citedSourceIds: ["diabetes_canada_2018"],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an empty bullet list", () => {
+    const schema = buildVisitSummarySchema(["htn_canada_2025"]);
+    const result = schema.safeParse({ bullets: [], citedSourceIds: [] });
     expect(result.success).toBe(false);
   });
 });

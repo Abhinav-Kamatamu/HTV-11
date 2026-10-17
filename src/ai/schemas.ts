@@ -2,6 +2,7 @@
 // response" rule). Gemini extracts structure; it never computes a risk score or a points contribution.
 
 import { z } from "zod";
+import { isSourceId, type SourceId } from "@/engine/sources";
 import { isSymptomCode } from "@/engine/symptoms";
 
 const confidence = z.number().min(0).max(1);
@@ -103,3 +104,32 @@ export const SymptomCodingSchema = z.object({
   confidence,
 });
 export type SymptomCoding = z.infer<typeof SymptomCodingSchema>;
+
+// explainFlag / visitSummary (RISK_ENGINE §10): "cites only the given sources, may not change points."
+// `points` never appears in either output schema, so Gemini has no field to put a score in. The citation
+// list is not all of SOURCES — each call builds the schema from exactly the sourceIds already present on
+// the ledger rows it was shown, so Gemini cannot cite a source it was not given.
+const citedSourceIds = (allowed: readonly SourceId[]) => {
+  const allowedSet = new Set(allowed);
+  return z
+    .array(z.string().refine(isSourceId, { message: "unknown source id" }))
+    .refine((ids) => ids.every((id) => allowedSet.has(id as SourceId)), {
+      message: "may only cite a source already on the contribution(s) it was given",
+    });
+};
+
+export function buildExplanationSchema(allowedSourceIds: readonly SourceId[]) {
+  return z.object({
+    summary: z.string().min(20).max(700),
+    citedSourceIds: citedSourceIds(allowedSourceIds),
+  });
+}
+export type FlagExplanation = z.infer<ReturnType<typeof buildExplanationSchema>>;
+
+export function buildVisitSummarySchema(allowedSourceIds: readonly SourceId[]) {
+  return z.object({
+    bullets: z.array(z.string().min(5).max(300)).min(1).max(10),
+    citedSourceIds: citedSourceIds(allowedSourceIds),
+  });
+}
+export type VisitSummary = z.infer<ReturnType<typeof buildVisitSummarySchema>>;

@@ -1,5 +1,36 @@
 import { describe, expect, it, vi } from "vitest";
+import type { Flag } from "@/engine/flags";
 import { buildClient, type GenerateJson } from "./gemini";
+
+const t2dFlag: Flag = {
+  patientId: "patient-a",
+  condition: "t2d",
+  kind: "trend",
+  severity: "review",
+  title: "HbA1c rising 0.3 %/yr, reaches the 6.0% prediabetes line in ~2 yr",
+  points: 7,
+  contributions: [
+    {
+      layer: "trend",
+      points: 2,
+      reason: "HbA1c rising 0.3 %/yr (Sen), reaches the 6.0% prediabetes line in ~2 yr",
+      evidence: [{ metric: "hba1c", ts: "2026-09-01T00:00:00.000Z", value: 5.4, unit: "%" }],
+      sourceIds: ["diabetes_canada_2018", "mann_1945"],
+    },
+    {
+      layer: "symptom",
+      points: 3,
+      reason: "Thirst reported 9 times in 6 weeks",
+      evidence: [],
+      sourceIds: [],
+    },
+  ],
+  evidence: [{ metric: "hba1c", ts: "2026-09-01T00:00:00.000Z", value: 5.4, unit: "%" }],
+  rule: "HbA1c rising 0.3 %/yr (Sen), reaches the 6.0% prediabetes line in ~2 yr",
+  sourceIds: ["diabetes_canada_2018", "mann_1945"],
+  status: "new",
+  label: null,
+};
 
 const validMeal = {
   items: ["pasta", "salad"],
@@ -116,6 +147,66 @@ describe("buildClient / extract", () => {
     const client = buildClient(generate);
 
     const result = await client.codeSymptoms("something odd");
+
+    expect(result.status).toBe("needs_manual_entry");
+  });
+
+  it("explainFlag passes only the flag's own sourceIds as the citation allow-list", async () => {
+    const explanation = {
+      summary: "HbA1c is trending up toward the prediabetes line and the patient has reported frequent thirst.",
+      citedSourceIds: ["diabetes_canada_2018"],
+    };
+    const generate: GenerateJson = vi.fn(async () => JSON.stringify(explanation));
+    const client = buildClient(generate);
+
+    const result = await client.explainFlag(t2dFlag);
+
+    expect(result).toEqual({ status: "ok", data: explanation });
+    const call = (generate as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.promptText).toContain("diabetes_canada_2018");
+    expect(call.promptText).toContain("mann_1945");
+  });
+
+  it("explainFlag falls back when Gemini cites a source outside the flag's own sourceIds", async () => {
+    const explanation = {
+      summary: "This explanation reaches for a kidney guideline the flag never cited.",
+      citedSourceIds: ["kdigo_2024"],
+    };
+    const generate: GenerateJson = vi.fn(async () => JSON.stringify(explanation));
+    const client = buildClient(generate);
+
+    const result = await client.explainFlag(t2dFlag);
+
+    expect(result.status).toBe("needs_manual_entry");
+  });
+
+  it("visitSummary unions sourceIds across all the flags it is given", async () => {
+    const ckdFlag: Flag = {
+      ...t2dFlag,
+      condition: "ckd",
+      sourceIds: ["kdigo_2024"],
+      contributions: [{ layer: "threshold", points: 2, reason: "ACR 3.2, unconfirmed", evidence: [], sourceIds: ["kdigo_2024"] }],
+    };
+    const summary = {
+      bullets: ["HbA1c is trending toward prediabetes.", "A single elevated ACR result needs a repeat test."],
+      citedSourceIds: ["diabetes_canada_2018", "kdigo_2024"],
+    };
+    const generate: GenerateJson = vi.fn(async () => JSON.stringify(summary));
+    const client = buildClient(generate);
+
+    const result = await client.visitSummary({ patientName: "Patient A", flags: [t2dFlag, ckdFlag] });
+
+    expect(result).toEqual({ status: "ok", data: summary });
+    const call = (generate as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.promptText).toContain("kdigo_2024");
+  });
+
+  it("visitSummary falls back when Gemini cites a source none of the flags carry", async () => {
+    const summary = { bullets: ["An unrelated claim."], citedSourceIds: ["sen_1968"] };
+    const generate: GenerateJson = vi.fn(async () => JSON.stringify(summary));
+    const client = buildClient(generate);
+
+    const result = await client.visitSummary({ patientName: "Patient A", flags: [t2dFlag] });
 
     expect(result.status).toBe("needs_manual_entry");
   });

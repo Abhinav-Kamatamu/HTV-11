@@ -4,25 +4,32 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-Done: T-020 sources.ts, T-021 scores.ts, T-022 trends.ts, T-027 labtrend.ts, T-028 changepoint.ts, T-023 symptoms.ts, T-029 cooccurrence.ts, T-030 stopbang.ts, T-031 points.ts + evaluate.ts (+ silence.ts, record.ts), T-024 flags.ts + rankPatients, T-025 src/ai schemas.ts + gemini.ts (all with tests, 254 tests green repo-wide).
-Left in order: T-026 (explainFlag + visitSummary, src/ai, depends on T-025 done + T-024 done). Flags can now be built from an Evaluation but nothing persists them yet (T-005, core).
+Done: T-020 sources.ts, T-021 scores.ts, T-022 trends.ts, T-027 labtrend.ts, T-028 changepoint.ts, T-023 symptoms.ts, T-029 cooccurrence.ts, T-030 stopbang.ts, T-031 points.ts + evaluate.ts (+ silence.ts, record.ts), T-024 flags.ts + rankPatients, T-025 src/ai schemas.ts + gemini.ts, T-026 explainFlag + visitSummary (all with tests, 266 tests green repo-wide).
+Engine lane's TASKS.md board (T-020 to T-031) is now fully done — no engine-lane task left `todo`. Flags can now be built and explained from an Evaluation but nothing persists them yet (T-005, core).
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
-T-026: `explainFlag(flag: Flag)` and `visitSummary({patientName, windowLabel?, flags: Flag[]})` in
-`src/ai/gemini.ts`, same `Extraction<T>`/retry-then-manual-entry shape as T-025. New dynamic zod
-schemas in `schemas.ts` (`buildExplanationSchema`/`buildVisitSummarySchema`) whose allowed
-`citedSourceIds` is exactly the calling flag(s)' `sourceIds` — not all of `SOURCES` — so Gemini can
-only cite a source already present on the ledger row(s) it was shown, and the output schema never
-includes a `points` field so it cannot alter the score. Tests mock `generate`, no live calls.
+(none)
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- T-026 `explainFlag` (takes a `Flag`/ledger, may not change points, cites only sourceIds already on its rows) + `visitSummary` restricted to `sources.ts`. Depends on T-024 (done) and T-025 (done) — build it on `createGeminiClient`/`buildClient` from `src/ai/gemini.ts`, same retry-then-manual-entry shape, two new zod schemas in `schemas.ts`.
+- No engine-lane task is `todo` on the board right now. Before claiming anything, re-check `TASKS.md` for
+  new engine entries the team may have added, or ask whether to help another lane (stay minimal and note
+  it under that lane's Gotchas per CLAUDE.md §2 if so).
 - Heads-up for core: `Flag.label` (engine's `flags.ts`) has no column on the `flags` table yet (`src/db/schema.ts`) — needed before T-005 persists flags with their unconfirmed/floor label.
+- Heads-up for clinician/core: `explainFlag`/`visitSummary` (T-026) exist but nothing calls them yet — they need an API route (core, near T-005) and a UI spot (clinician, T-043/T-044) before they're reachable in the demo.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- T-026 (`explainFlag`/`visitSummary` in `src/ai/gemini.ts`, 12 new tests): both reuse the T-025
+  `extract`/retry-then-manual-entry machinery. The citation restriction is enforced by construction, not
+  a post-hoc check: `buildExplanationSchema(flag.sourceIds)` / `buildVisitSummarySchema(unioned sourceIds)`
+  (`schemas.ts`) build a *fresh* zod schema per call whose `citedSourceIds` field only accepts ids already
+  on the flag(s) passed in — never all of `SOURCES` — so a real-but-unrelated source id (e.g. citing
+  `kdigo_2024` on a t2d-only flag) fails validation and falls back to `needs_manual_entry` exactly like an
+  invented one. Neither output schema has a `points` field, so "may not change points" holds because
+  there's nowhere for Gemini to put one. `visitSummary` takes `{patientName, windowLabel?, flags: Flag[]}`
+  and unions `sourceIds` across every flag given to it.
 - T-025 (`src/ai/schemas.ts` + `gemini.ts`, 21 tests): every extractor returns `Extraction<T> = {status:"ok", data} | {status:"needs_manual_entry", confidence:0, raw, error}` (RISK_ENGINE §10's "retry once, then store the raw input with confidence 0"), never a fabricated zero-filled result — callers (ingest routes, T-005) branch on `status`. `buildClient(generate: GenerateJson)` takes the actual network call as an injected function so tests never hit the real API; `createGeminiClient()` wraps it with the real `@google/genai` SDK and throws at construction if `GEMINI_API_KEY`/`GEMINI_MODEL` are unset. Lab/device metric+unit maps (`LAB_METRIC_UNITS`, `DEVICE_METRIC_UNITS`) are a deliberate duplicate of `src/db/seed/generate.ts`'s `UNITS` (core's file, out of lane) — keep both in sync if that contract changes. `codeSymptoms` schema rejects any code not in `src/engine/symptoms.ts`'s fixed list (falls back to manual entry rather than let Gemini invent a code). zod v4's native `z.toJSONSchema()` builds the Gemini `responseJsonSchema` — no `zod-to-json-schema` dependency needed.
 - `toFlags(evaluation): Flag[]` and `rankPatients(patients: PatientFlags[])` (T-024, `src/engine/flags.ts`, 18 tests). `kind` = the ledger's top-points contribution, tie-break `threshold > trend > score > cooccurrence > symptom_cluster > sleep > changepoint > gap` (layer `symptom` maps to kind `symptom_cluster`, everything else is 1:1); `title`/`rule` are both that row's `reason` text (no separate short title exists anywhere else in the engine). `evidence`/`sourceIds` are unioned and deduplicated across every contribution in the ledger, not just the top one. `rankPatients` compares max severity, then summed points across all of a patient's flags, then the steepest `Contribution.normalizedSlope`, then falls back to `patientId` for a deterministic order; a gap-only (every flag `condition === "engagement"`) patient is forced after any patient with at least one clinical flag as a first-class check, before severity/points are even compared.
 - `Contribution.normalizedSlope` (`points.ts`, optional, `|slope per year| / threshold`) only exists on the `trend` rows built by `evaluate.ts`'s `labTrends` and `htnTrend` (not the 0-point rapid-eGFR-decline row, not vitals change-points). It exists purely so `rankPatients` can compare slope steepness across HbA1c/%, ACR/mg·mmol⁻¹ and BP/mmHg on one scale.
@@ -46,6 +53,7 @@ includes a `points` field so it cannot alter the score. Tests mock `generate`, n
 
 ## Log
 <!-- scripts/handoff.sh appends entries here. -->
+- 2026-10-17 · T-026 done: `explainFlag(flag)` and `visitSummary({patientName, windowLabel?, flags})` in `src/ai/gemini.ts`, two dynamic zod schemas (`buildExplanationSchema`/`buildVisitSummarySchema`) in `schemas.ts` whose citation allow-list is built per call from the given flag(s)' own `sourceIds`; 12 new tests, 266 total green. Engine lane's board (T-020 to T-031) is now fully done.
 - 2026-10-17 · T-025 done: `src/ai/schemas.ts` (zod schemas for all four extractors, fixed lab/device metric+unit maps) and `src/ai/gemini.ts` (`@google/genai` client, `buildClient`/`createGeminiClient`, retry-once-then-manual-entry); added `@google/genai` and `zod` as real deps (DECISIONS.md); 21 new tests, 254 total green.
 - 2026-10-17 · T-024 done: `flags.ts` (`toFlags`, `rankPatients`), optional `Contribution.normalizedSlope` added in `points.ts`/`evaluate.ts` for the slope tiebreak; 18 new tests incl. seed story patients and the gap-only-never-outranks rule, 233 total green. `Flag.label` has no DB column yet (noted for core/T-005).
 - 2026-10-17 · T-031 follow-up: team decisions applied (unconfirmed-value floor at monitor with label, rapid eGFR decline floors CKD at review instead of +1, T-008 parity with `detectSilence`); B's CKD flag now review, controls still quiet; 215 tests green.
