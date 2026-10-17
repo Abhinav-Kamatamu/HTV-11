@@ -13,12 +13,16 @@ Engine lane's TASKS.md board (T-020 to T-031) is now fully done — no engine-la
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- New: **T-032** (stretch, docs-only addition 2026-10-17 from the pitch lane's Vultr-usage rework —
+- **T-032** (stretch, docs-only addition 2026-10-17 from the pitch lane's Vultr-usage rework —
   see `docs/ARCHITECTURE.md` "Vultr usage beyond hosting" and `relay/pitch.md`): load the
   guideline excerpts behind `sources.ts` into a Vultr Serverless Inference vector store so the
-  why panel can show the exact cited passage. Gated on confirming hackathon credits cover
-  Serverless Inference and checking where it processes data first (public guideline text only,
-  never patient data) — don't start the build before that check.
+  why panel can show the exact cited passage. **First gate cleared (2026-10-17, DECISIONS.md):**
+  live-tested the hackathon's $100 credit against a real Serverless Inference embedding call
+  (`qwen3-embedding-4b`) — 200, no card-on-file error, subscription deleted after. The credit
+  covers it the same way it covers the Vultr compute instance. **Second gate still open** before
+  starting the build: decide and record which Vultr datacenter region processes the embed calls,
+  and make sure only `sources.ts`'s public guideline text ever gets embedded there — never
+  patient data. Still a stretch goal, not required for the demo.
 - Otherwise no engine-lane task is `todo` on the board. Before claiming anything, re-check `TASKS.md` for
   new engine entries the team may have added, or ask whether to help another lane (stay minimal and note
   it under that lane's Gotchas per CLAUDE.md §2 if so).
