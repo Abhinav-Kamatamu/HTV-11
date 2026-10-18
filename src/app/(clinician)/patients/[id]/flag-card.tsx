@@ -42,6 +42,19 @@ const LAYER_LABEL: Record<Layer, string> = {
   cooccurrence: "Co-occurrence", sleep: "Sleep screen", symptom: "Symptom", gap: "Engagement",
 };
 
+// SPEC.md §3: "Clinician clicks Validate (optionally edits a message)" — a default draft, not a
+// blank box, so Validate is a one-click send for the common case and still editable for the rest.
+const DEFAULT_MESSAGE_TOPIC: Record<string, string> = {
+  t2d: "your blood sugar trend", ckd: "your kidney function trend", htn: "your blood pressure trend",
+  masld: "your liver health trend", mets: "your metabolic health", osa: "your sleep",
+  engagement: "checking in",
+};
+
+function defaultMessage(condition: string): string {
+  const topic = DEFAULT_MESSAGE_TOPIC[condition] ?? "your recent readings";
+  return `Your care team would like to book a visit to talk about ${topic}.`;
+}
+
 export function Citation({ id }: { id: SourceId }) {
   const source = SOURCES[id];
   return (
@@ -60,6 +73,7 @@ export function FlagCard({ flag }: { flag: FlagView }) {
   const badge = SEVERITY_BADGE[flag.severity];
   const [pending, setPending] = useState<"validate" | "dismiss" | null>(null);
   const [note, setNote] = useState("");
+  const [message, setMessage] = useState(() => defaultMessage(flag.condition));
   const [error, setError] = useState<string | null>(null);
 
   async function resolve(action: "validate" | "dismiss") {
@@ -69,7 +83,11 @@ export function FlagCard({ flag }: { flag: FlagView }) {
       const res = await fetch(`/api/flags/${flag.id}/${action}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(action === "validate" ? { note: note || undefined } : { reason: note || undefined }),
+        body: JSON.stringify(
+          action === "validate"
+            ? { note: note || undefined, message: message || undefined }
+            : { reason: note || undefined },
+        ),
       });
       if (!res.ok) throw new Error(`${res.status}`);
       router.refresh();
@@ -121,12 +139,24 @@ export function FlagCard({ flag }: { flag: FlagView }) {
       {flag.status === "new" && (
         <div className="flex flex-col gap-2">
           <textarea
-            value={note} onChange={(e) => setNote(e.target.value)} placeholder="Clinical note (optional)"
+            value={note} onChange={(e) => setNote(e.target.value)} placeholder="Clinical note (internal, optional)"
             className={cn(
               "min-h-16 w-full resize-none rounded-md border border-input bg-background p-2 text-sm",
               "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none",
             )}
           />
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">
+              Message to patient — sent only if you Validate
+            </label>
+            <textarea
+              value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message to patient (optional)"
+              className={cn(
+                "min-h-16 w-full resize-none rounded-md border border-input bg-background p-2 text-sm",
+                "placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none",
+              )}
+            />
+          </div>
           <div className="flex items-center gap-2">
             <Button size="sm" disabled={pending !== null} onClick={() => resolve("validate")}>
               {pending === "validate" ? "Validating…" : "Validate"}
