@@ -3,6 +3,7 @@ import type { getDb } from "@/db/client";
 import { flags, labReports, meals, messages, observations, patients, symptomLogs } from "@/db/schema";
 import { evaluate } from "@/engine/evaluate";
 import { rankPatients, toFlags, type Flag } from "@/engine/flags";
+import { severityRank } from "@/engine/points";
 import { buildRecord, type PatientRecord, type RecordSource } from "@/engine/record";
 import type { Silence } from "@/engine/silence";
 import { activeRedFlags, SYMPTOM_PARAMS, type SymptomLogInput } from "@/engine/symptoms";
@@ -191,11 +192,21 @@ export async function getPatientSummary(db: Db, patientId: string) {
     db.select().from(observations).where(eq(observations.patientId, patientId)).orderBy(desc(observations.ts))
       .limit(OBSERVATIONS_LIMIT),
   ]);
+  // The DB query orders by createdAt (most-recently-written row first), which is unrelated to
+  // clinical priority — whichever condition the engine's loop happened to insert/update last ends
+  // up first, so a 3-point "monitor" flag can land above three "urgent" ones (human-found,
+  // 2026-10-18, on Walter Hughes's real seed data: masld/monitor/3 was first, ahead of
+  // htn/urgent/6.5, ckd/urgent/4, t2d/urgent/5). Re-sorted here by the same severity-then-points
+  // priority `rankPatients` (flags.ts) already uses for the queue, so "most important first" means
+  // the same thing on both pages.
+  const sortedFlags = [...openFlags].sort((a, b) =>
+    severityRank(b.severity) - severityRank(a.severity) || b.points - a.points,
+  );
   return {
     patient,
     // rowToFlag's `status` is always the engine's own pre-persistence literal ("new"); override it with
     // the real column so callers can tell a validated flag from a fresh one (T-043 why panel).
-    flags: openFlags.map((row) => ({ id: row.id, createdAt: row.createdAt, ...rowToFlag(row), status: row.status })),
+    flags: sortedFlags.map((row) => ({ id: row.id, createdAt: row.createdAt, ...rowToFlag(row), status: row.status })),
     meals: recentMeals,
     symptomLogs: recentLogs,
     labReports: recentLabs,
