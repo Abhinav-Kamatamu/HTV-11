@@ -96,8 +96,25 @@ export function toFlags(evaluation: Evaluation): Flag[] {
 
 export type PatientFlags = { patientId: string; flags: Flag[] };
 
-/** A patient whose only open flag is engagement (gap-only) never outranks one with a clinical flag. */
-const isGapOnly = (flags: Flag[]): boolean => flags.length > 0 && flags.every((f) => f.condition === "engagement");
+/**
+ * Three priority tiers, lowest number first: 0 = at least one clinical (non-engagement) flag, ranked
+ * normally by severity/points below; 1 = gap-only (e.g. "stopped logging") — below every clinical flag,
+ * but still above a patient with nothing open at all, since silence is itself something to act on; 2 = no
+ * open flags whatsoever.
+ *
+ * `isGapOnly` alone (`flags.length > 0 && every engagement`) used to be compared pairwise as a boolean,
+ * which put a 0-flag patient in the same "not gap-only" bucket as a clinical-flag patient — both read as
+ * `false` — so a gap-only patient sorted below BOTH, not just below clinical ones. Caught live: Rosa
+ * Delgado (the one silent patient in the seed, `monitor` severity) ranked dead last in the queue, below
+ * all 20 flagless controls — the "stopped logging" signal was effectively invisible unless a clinician
+ * scrolled past everyone with nothing wrong, or used the dedicated filter. The three explicit tiers below
+ * fix it without changing the two relative orderings `flags.test.ts` already covered (gap-only still never
+ * outranks a clinical flag; two gap-only patients still order against each other by severity/points).
+ */
+function priorityTier(flags: Flag[]): 0 | 1 | 2 {
+  if (flags.length === 0) return 2;
+  return flags.every((f) => f.condition === "engagement") ? 1 : 0;
+}
 
 const maxFlagSeverity = (flags: Flag[]): Severity | null =>
   flags.reduce<Severity | null>((acc, f) => (severityRank(f.severity) > severityRank(acc) ? f.severity : acc), null);
@@ -114,9 +131,8 @@ const steepestNormalizedSlope = (flags: Flag[]): number =>
  */
 export function rankPatients(patients: PatientFlags[]): PatientFlags[] {
   return [...patients].sort((a, b) => {
-    const gapA = isGapOnly(a.flags);
-    const gapB = isGapOnly(b.flags);
-    if (gapA !== gapB) return gapA ? 1 : -1;
+    const tierDiff = priorityTier(a.flags) - priorityTier(b.flags);
+    if (tierDiff !== 0) return tierDiff;
 
     const sevDiff = severityRank(maxFlagSeverity(b.flags)) - severityRank(maxFlagSeverity(a.flags));
     if (sevDiff !== 0) return sevDiff;

@@ -163,6 +163,16 @@ describe("rankPatients", () => {
     expect(rankPatients([smaller, bigger]).map((p) => p.patientId)).toEqual(["bigger-gap", "smaller-gap"]);
   });
 
+  it("a gap-only patient still outranks one with no open flags at all", () => {
+    // Regression: `isGapOnly` compared pairwise as a boolean put a 0-flag patient in the same "not
+    // gap-only" bucket as a clinical-flag patient, so gap-only sorted below BOTH instead of just
+    // below clinical ones — caught live, Rosa Delgado (the seed's one silent patient) ranked dead
+    // last, below all 20 flagless controls, in the real queue.
+    const gapOnly = mkPatient("gap-only", "monitor", 1, 0, "engagement");
+    const noFlags: PatientFlags = { patientId: "no-flags", flags: [] };
+    expect(rankPatients([noFlags, gapOnly]).map((p) => p.patientId)).toEqual(["gap-only", "no-flags"]);
+  });
+
   it("falls back to patientId for a total tie, so the order is deterministic", () => {
     const x = mkPatient("x", "monitor", 3);
     const z = mkPatient("z", "monitor", 3);
