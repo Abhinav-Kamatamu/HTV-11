@@ -83,6 +83,8 @@ export async function POST() {
 
     const silenceScan = await medianMs(() => listSilenceSql(db, now));
 
+    // 1 sample, not 5 (see benchmark.ts): this path alone used to cost ~10s of the route's ~11.6s
+    // wall time for a number the page only ever showed as a single median anyway.
     const engineRerun = await medianMs(async () => {
       let flagsWritten = 0;
       for (const patientId of patientIds) {
@@ -90,7 +92,7 @@ export async function POST() {
         flagsWritten += flags.length;
       }
       return flagsWritten;
-    });
+    }, 1);
 
     return ok({
       patientCount: patientIds.length,
