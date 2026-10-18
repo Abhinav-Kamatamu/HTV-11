@@ -31,6 +31,25 @@ T-042 through T-048 done. No open board tasks; this session did human-requested 
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **FIXED (commit `03deb77`, human request: judges get the live URL to try on their own phones, so
+  a bad link needs a real 404, not Next's default error screen): `/patients/[id]` had TWO distinct
+  uncaught-error paths for an invalid id, not one.** (1) A well-formed UUID with no matching row:
+  `getPatientSummary` throws the API layer's `ApiError(404, ...)`, which is not the same thing as
+  Next's own `notFound()` from `next/navigation` — only the latter triggers a `not-found.tsx`
+  boundary, so it bubbled up uncaught. (2) A non-UUID string (a plain typo) makes Postgres itself
+  throw `invalid input syntax for type uuid` *before* any row lookup — a raw driver error, not an
+  `ApiError`, so fixing (1) alone didn't fix (2). Fixed both: validate the id is UUID-shaped before
+  querying at all, and catch the `ApiError(404)` case and call `notFound()`. New
+  `src/app/(clinician)/not-found.tsx` renders inside the full clinician layout (nav/header), not a
+  bare page.
+- **Methodology trap hit while finding the above: `curl`-ing a broken page and grepping the HTML
+  for expected text is not proof the page actually rendered that text.** Next's RSC flight payload
+  for a route embeds the *module graph* (including a sibling `not-found.tsx`'s source/strings)
+  regardless of which branch actually ran, so `grep "Patient not found" response.html` returned a
+  match even while the page was actually crashing client-side with a generic "This page couldn't
+  load" error screen — only caught by an actual headless-Chrome **screenshot**. Any future check of
+  "does page X show message Y" needs a rendered screenshot or a DOM-level assertion, not a raw-HTML
+  text grep, once a `not-found.tsx`/`error.tsx` boundary exists in the route.
 - **FIXED, demo-blocking (commit `4fd68ae`, human-found via "I can't see anything in clinician to
   send a message"): Validate never actually sent a patient message.** `flag-card.tsx` had one
   textarea labeled "Clinical note (optional)," POSTed only as the validate route's `note` field.
