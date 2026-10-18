@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/db/client";
 import { patients } from "@/db/schema";
 import { olsFitBatchSql } from "@/db/vitals";
+import { ApiError } from "@/app/api/_lib/http";
 import { getPatientSummary, loadPatientRecord } from "@/app/api/_lib/engine-db";
 import { evaluate } from "@/engine/evaluate";
 import { percentileRank, slopePerYear, VITALS_GATE, type OlsFit } from "@/engine/trends";
@@ -91,14 +93,35 @@ async function loadBpSlopePercentile(id: string): Promise<{ perYear: number; per
   return percentile === null ? null : { perYear, percentile };
 }
 
+// A patient id that isn't even UUID-shaped (a typo, a stray character) makes the `patients.id`
+// column lookup throw Postgres's raw `invalid input syntax for type uuid` error — before the query
+// even gets a chance to not-find a row — which isn't an `ApiError` the catch below can recognize.
+// Checked first so a malformed id goes straight to `notFound()` without a wasted failing query.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function PatientContent({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   const { id } = await params;
-  const [summary, record, bpPercentile] = await Promise.all([
-    getPatientSummary(getDb(), id),
-    loadPatientRecord(getDb(), id),
-    loadBpSlopePercentile(id),
-  ]);
+  // Judges try the live URL on their own phones (human request, 2026-10-17) — an invalid id (typo,
+  // a stale link, a patient removed in a reseed) needs a real 404 + the branded `not-found.tsx`
+  // above, not Next's default error screen. `getPatientSummary`/`loadPatientRecord` both throw the
+  // API layer's `ApiError(404, ...)` (`_lib/http.ts`'s `notFound()`), which isn't the same thing as
+  // Next's own `notFound()` from `next/navigation` — only the latter triggers the route's
+  // `not-found.tsx` boundary with a correct 404 status, so the two have to be bridged here.
+  if (!UUID_RE.test(id)) notFound();
+  let summary: Awaited<ReturnType<typeof getPatientSummary>>;
+  let record: Awaited<ReturnType<typeof loadPatientRecord>>;
+  let bpPercentile: Awaited<ReturnType<typeof loadBpSlopePercentile>>;
+  try {
+    [summary, record, bpPercentile] = await Promise.all([
+      getPatientSummary(getDb(), id),
+      loadPatientRecord(getDb(), id),
+      loadBpSlopePercentile(id),
+    ]);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) notFound();
+    throw err;
+  }
   const evaluation = evaluate(record);
   const charts = buildLabCharts(summary.observations);
   const vitalsCharts = buildVitalsCharts(summary.observations, evaluation.silence);
