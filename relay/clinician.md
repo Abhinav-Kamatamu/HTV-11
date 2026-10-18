@@ -31,6 +31,24 @@ T-042 through T-048 done. No open board tasks; this session did human-requested 
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **FIXED, cross-lane (commit `c9ed4f3`, engine-owned `src/engine/symptoms.ts` + `src/ai/{gemini,schemas}.ts`,
+  human-found live): the symptom chat failed on clearly-codeable input** ("I've been really thirsty
+  and tired the last few days" → "Couldn't quite make sense of that" instead of "Logged."). Gemini
+  understood the text fine (0.95 confidence, right severity, correctly non-red-flag) but returned
+  the symptom's label ("Excessive thirst") instead of its code ("thirst") despite the prompt listing
+  them as `code = label` and asking for the code — a non-deterministic model not reliably picking
+  the right side of an `=`. Fixed with `normalizeSymptomCode`/`normalizeSymptomCoding`, mapping a
+  label back to its code on the raw parsed JSON *before* schema validation. **Tried a zod
+  `.transform()` on the schema field first — doesn't work**, because `SymptomCodingSchema` also goes
+  through `z.toJSONSchema()` to build the request schema sent to Gemini, and zod can't represent a
+  transform in JSON Schema at all ("Transforms cannot be represented in JSON Schema"); any future fix
+  that touches a schema used for both validating *and generating* a Gemini request schema will hit
+  the same wall. Landed as a new optional `normalize` hook on `gemini.ts`'s `extract()` instead.
+  Diagnosed by calling `createGeminiClient().codeSymptoms(text)` directly from a scratch script
+  (`npx tsx --env-file-if-exists=.env.local`, deleted after) to see the raw pre-fallback response —
+  the app layer swallows the real reason into a generic UI message by design, so this kind of bug is
+  otherwise invisible without going around it. Verified live through the real route, reverted the
+  test symptom-log row + re-ran the engine after (same convention as every other smoke test here).
 - **FIXED, cross-lane (commit `4a82fb3`, engine-owned `src/engine/flags.ts`, human-found live on the
   real queue): `rankPatients`'s gap-only rule buried the one silent patient below every healthy
   patient.** `isGapOnly` compared pairwise as a plain boolean; a 0-flag patient also reads
