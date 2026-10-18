@@ -4,7 +4,7 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-T-042 through T-048 done. No open board tasks; this session did a human-requested UI pass
+T-042 through T-048 done. No open board tasks; this session did human-requested UI/tooling work
 (no T-ID, same pattern as the earlier "pitch session" UI pass logged below).
 
 ## In flight
@@ -25,9 +25,28 @@ T-042 through T-048 done. No open board tasks; this session did a human-requeste
   for MASLD), copy `loadBpSlopePercentile`'s shape in `patients/[id]/page.tsx` but gate-check it
   against a second seed metric first — this seed's R² >= 0.5 gate only clears for 1-2 patients per
   metric, so double check the comparison population isn't degenerate before trusting the number.
+- Run `npm run demo:rehearse` (new, see Gotchas) before the real pitch and after any change that
+  touches a demo-beat route, not just once today — it's cheap and catches exactly the kind of stall
+  that doesn't show up in lint/tsc/tests.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **`npm run demo:rehearse` (new, `scripts/demo-rehearsal.ts`, commit `8236d64`) times SPEC.md §6's
+  6 demo beats against a running app** — narration budget (from the spec) tracked separately from
+  actual technical latency, so a stall doesn't silently eat into the 3-minute slot. Read-only except
+  beat 6's `POST /api/benchmark/run` (safe to repeat — only touches `status="new"` flags). Beats 3/4's
+  mutating steps (validate/dismiss, send message, real Gemini photo calls) are intentionally NOT
+  automated — `--live` just marks them "rehearse live," it doesn't fire them.
+- **First run found beat 6 taking ~11.6s, not the ~2s the page's own numbers implied — fixed
+  (`src/app/api/_lib/benchmark.ts`, `src/app/api/benchmark/run/route.ts`, both core-owned, touched
+  minimally per CLAUDE.md §2).** `medianMs()` ran every path 5x and reported the median, which hid
+  that the *request* blocks on all 5 samples finishing. Fine for the fast OLS paths (~40ms each), but
+  the full engine re-run costs ~2s *per sample* and is deterministic given the same data (same
+  `evaluate()` over the same observations), so 5 samples bought no extra signal, just ~10s of dead
+  wall time. `medianMs` now takes an optional `times` param; the engine-rerun call passes `1`. Beat 6
+  is ~3.5s now, confirmed stable across 3 runs. This is the kind of bug lint/tsc/`npm test` structurally
+  cannot catch (it needs a live timed request against the real route) — exactly why the rehearsal
+  script exists, not a one-off find-and-forget.
 - **BP trend percentile on `/patients/[id]` (commit `c676c2a`): gate the subject patient, never gate
   the comparison population.** `loadBpSlopePercentile` batches `olsFitBatchSql` for `bp_systolic`
   across every patient (one query, T-012's pattern) and ranks the subject's slope against everyone
