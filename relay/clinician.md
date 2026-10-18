@@ -31,6 +31,15 @@ T-042 through T-048 done. No open board tasks; this session did human-requested 
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **FIXED, cross-lane (commit `e2255dc`, core-owned `src/app/api/_lib/engine-db.ts`, human-found on
+  Walter Hughes's real patient page): `getPatientSummary`'s flags were ordered by `createdAt desc`,
+  not severity or points** — whichever condition the engine's upsert loop happened to touch last on
+  the most recent run ends up first, with no relation to clinical priority. Walter's 3-point
+  `masld`/monitor flag was displaying above all three of his urgent flags (`htn` 6.5, `t2d` 5, `ckd`
+  4). Fixed by sorting with the same `severityRank`-then-points priority `flags.ts`'s `rankPatients`
+  already uses for the queue, so "most important first" is consistent between the queue and a
+  single patient's flag cards. **If any other code reads `getPatientSummary(...).flags` expecting
+  `createdAt` order specifically (none currently do, checked), this silently changes that too.**
 - **FIXED (commit `03deb77`, human request: judges get the live URL to try on their own phones, so
   a bad link needs a real 404, not Next's default error screen): `/patients/[id]` had TWO distinct
   uncaught-error paths for an invalid id, not one.** (1) A well-formed UUID with no matching row:
