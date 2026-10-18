@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import { isSourceId, type SourceId } from "@/engine/sources";
-import { isSymptomCode } from "@/engine/symptoms";
+import { isSymptomCode, normalizeSymptomCode } from "@/engine/symptoms";
 
 const confidence = z.number().min(0).max(1);
 
@@ -94,6 +94,11 @@ export const LabExtractionSchema = z.object({
 export type LabExtraction = z.infer<typeof LabExtractionSchema>;
 
 // codeSymptoms(text) -> symptom codes from the fixed list (src/engine/symptoms.ts) + severity + red-flag.
+// No `.transform()` here on purpose: this same schema is also run through `z.toJSONSchema()` to build
+// the `responseJsonSchema` sent to Gemini (see `extract()` in gemini.ts), and zod can't represent a
+// transform in JSON Schema ("Transforms cannot be represented in JSON Schema") — confirmed by actually
+// trying it. The code-vs-label normalization instead happens on the raw parsed JSON before validation;
+// see `normalizeSymptomCoding` below and `extract()`'s `normalize` hook.
 const SymptomCodingEntrySchema = z.object({
   code: z.string().refine(isSymptomCode, { message: "unknown symptom code" }),
   severity: z.union([z.literal(1), z.literal(2), z.literal(3)]),
@@ -104,6 +109,31 @@ export const SymptomCodingSchema = z.object({
   confidence,
 });
 export type SymptomCoding = z.infer<typeof SymptomCodingSchema>;
+
+/**
+ * Normalizes `codes[].code` on the *raw parsed JSON*, before `SymptomCodingSchema` validates it —
+ * see that schema's comment for why this can't be a zod `.transform()`. Maps a label Gemini
+ * returned by mistake (e.g. `"Excessive thirst"`) back to its code (`"thirst"`); human-found live,
+ * 2026-10-18, on input the model had clearly understood correctly (0.95 confidence, right
+ * severity, correct redFlag) but encoded with the wrong token. Defensive on shape: returns the
+ * input unchanged if it doesn't look like a symptom-coding response at all, so a genuinely
+ * malformed response still fails validation with its real error instead of being silently passed
+ * through here.
+ */
+export function normalizeSymptomCoding(json: unknown): unknown {
+  if (typeof json !== "object" || json === null || !Array.isArray((json as { codes?: unknown }).codes)) {
+    return json;
+  }
+  const { codes, ...rest } = json as { codes: unknown[] };
+  return {
+    ...rest,
+    codes: codes.map((entry) =>
+      typeof entry === "object" && entry !== null && typeof (entry as { code?: unknown }).code === "string"
+        ? { ...entry, code: normalizeSymptomCode((entry as { code: string }).code) }
+        : entry,
+    ),
+  };
+}
 
 // explainFlag / visitSummary (RISK_ENGINE §10): "cites only the given sources, may not change points."
 // `points` never appears in either output schema, so Gemini has no field to put a score in. The citation

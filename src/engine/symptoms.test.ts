@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { generateSeed } from "../db/seed/generate";
 import { STORY_IDS } from "../db/seed/ids";
 import {
-  activeRedFlags, clusterScores, isSymptomCode, reportCount, SYMPTOM_PARAMS, SYMPTOMS, type SymptomLogInput,
+  activeRedFlags, clusterScores, isSymptomCode, normalizeSymptomCode, reportCount, SYMPTOM_PARAMS, SYMPTOMS,
+  type SymptomLogInput,
 } from "./symptoms";
 import { DAY_MS } from "./types";
 
@@ -21,6 +22,25 @@ describe("code list", () => {
     }
     expect(["chest_pain", "stroke_signs"].every(isSymptomCode)).toBe(true);
     expect(isSymptomCode("toString")).toBe(false);
+  });
+});
+
+describe("normalizeSymptomCode", () => {
+  // Regression (human-found live, 2026-10-18): Gemini sometimes returns a symptom's label instead
+  // of its code (e.g. "Excessive thirst" instead of "thirst") despite the prompt asking for the
+  // code, on input it otherwise understood correctly (high confidence, right severity/redFlag).
+  it("passes an already-valid code straight through", () => {
+    expect(normalizeSymptomCode("thirst")).toBe("thirst");
+  });
+
+  it("maps a label back to its code, case-insensitively", () => {
+    expect(normalizeSymptomCode("Excessive thirst")).toBe("thirst");
+    expect(normalizeSymptomCode("excessive THIRST")).toBe("thirst");
+    expect(normalizeSymptomCode("Unusual tiredness")).toBe("fatigue");
+  });
+
+  it("leaves genuinely unrecognized input unchanged, so it still fails isSymptomCode downstream", () => {
+    expect(normalizeSymptomCode("made up symptom")).toBe("made up symptom");
   });
 });
 

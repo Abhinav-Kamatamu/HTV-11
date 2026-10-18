@@ -6,6 +6,7 @@ import {
   SymptomCodingSchema,
   buildExplanationSchema,
   buildVisitSummarySchema,
+  normalizeSymptomCoding,
 } from "./schemas";
 
 describe("MealExtractionSchema", () => {
@@ -142,6 +143,31 @@ describe("SymptomCodingSchema", () => {
       confidence: 0.9,
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("normalizeSymptomCoding", () => {
+  // Regression (human-found live, 2026-10-18): run before SymptomCodingSchema validates, on the
+  // raw JSON Gemini returned — not a schema `.transform()`, since this schema also goes through
+  // z.toJSONSchema() for the request sent to Gemini, which can't represent a transform.
+  it("maps a label Gemini returned by mistake back to its code, so the schema then accepts it", () => {
+    const raw = { codes: [{ code: "Excessive thirst", severity: 2 }], redFlag: false, confidence: 0.95 };
+    const normalized = normalizeSymptomCoding(raw);
+    expect(SymptomCodingSchema.safeParse(normalized)).toMatchObject({
+      success: true,
+      data: { codes: [{ code: "thirst", severity: 2 }] },
+    });
+  });
+
+  it("leaves a genuinely unrecognized code unchanged, so the schema still rejects it", () => {
+    const raw = { codes: [{ code: "made_up_symptom", severity: 1 }], redFlag: false, confidence: 0.5 };
+    expect(SymptomCodingSchema.safeParse(normalizeSymptomCoding(raw)).success).toBe(false);
+  });
+
+  it("passes non-symptom-coding shapes through unchanged instead of throwing", () => {
+    expect(normalizeSymptomCoding({ foo: "bar" })).toEqual({ foo: "bar" });
+    expect(normalizeSymptomCoding(null)).toBeNull();
+    expect(normalizeSymptomCoding("not an object")).toBe("not an object");
   });
 });
 

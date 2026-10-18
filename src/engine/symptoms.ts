@@ -37,6 +37,27 @@ export const SYMPTOMS = {
 export type SymptomCode = keyof typeof SYMPTOMS;
 export const isSymptomCode = (code: string): code is SymptomCode => Object.hasOwn(SYMPTOMS, code);
 
+const LABEL_TO_CODE = new Map<string, SymptomCode>(
+  (Object.entries(SYMPTOMS) as [SymptomCode, SymptomDef][]).map(([code, def]) => [def.label.toLowerCase(), code]),
+);
+
+/**
+ * Gemini's prompt lists each code as `code = label` (e.g. `thirst = Excessive thirst`) and is told
+ * to return only the code, but live testing found it sometimes returns the label instead (e.g.
+ * `"Excessive thirst"` for `thirst`) — a plausible, understandable response, just not the exact
+ * token the schema requires, and real confidence/severity on the rest of the response showed it
+ * had genuinely understood the text correctly. Rather than rely on prompt wording alone to get a
+ * non-deterministic model to pick the right side of an `=` every time, normalize a label match back
+ * to its code before validating, so this class of slip doesn't burn a retry or fall back to manual
+ * entry on input the model clearly understood. Case-insensitive; returns the input unchanged if it
+ * matches neither a code nor a label, so genuinely unrecognized content still correctly fails
+ * `isSymptomCode` downstream.
+ */
+export function normalizeSymptomCode(input: string): string {
+  if (isSymptomCode(input)) return input;
+  return LABEL_TO_CODE.get(input.toLowerCase()) ?? input;
+}
+
 export const SYMPTOM_PARAMS = {
   /** Decay time constant in days: a report loses 63% of its weight every 21 days. */
   decayDays: 21,

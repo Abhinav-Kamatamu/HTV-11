@@ -20,6 +20,7 @@ import {
   SymptomCodingSchema,
   buildExplanationSchema,
   buildVisitSummarySchema,
+  normalizeSymptomCoding,
   type DeviceExtraction,
   type FlagExplanation,
   type LabExtraction,
@@ -58,12 +59,18 @@ export type GeminiClient = {
 
 const MAX_ATTEMPTS = 2; // one try, one retry
 
-/** Runs `generate`, validates against `schema`, retries once on failure, else falls back. */
+/**
+ * Runs `generate`, validates against `schema`, retries once on failure, else falls back.
+ * `normalize`, when given, runs on the raw parsed JSON before validation — for fixing up a known,
+ * understandable shape of model slip (see `normalizeSymptomCoding`) without it needing to be
+ * expressible as a zod `.transform()` (which can't survive `z.toJSONSchema()`, see schemas.ts).
+ */
 async function extract<T>(
   generate: GenerateJson,
   schema: z.ZodType<T>,
   promptText: string,
   parts: unknown[],
+  normalize?: (json: unknown) => unknown,
 ): Promise<Extraction<T>> {
   const responseJsonSchema = z.toJSONSchema(schema);
   let lastRaw: unknown;
@@ -89,7 +96,7 @@ async function extract<T>(
       continue;
     }
     lastRaw = json;
-    const parsed = schema.safeParse(json);
+    const parsed = schema.safeParse(normalize ? normalize(json) : json);
     if (parsed.success) return { status: "ok", data: parsed.data };
     lastError = parsed.error.message;
   }
@@ -119,10 +126,12 @@ const LABS_PROMPT =
   "Respond with JSON only, matching the schema.";
 
 const SYMPTOM_PROMPT =
-  `You are coding a patient's free-text message into a fixed list of symptom codes. Only use these ` +
-  `codes, each with the severity (1 mild to 3 severe) the message implies: ${Object.entries(SYMPTOMS)
-    .map(([code, def]) => `${code} = ${def.label}`)
-    .join("; ")}. Set redFlag to true if the message describes any of: ${Object.entries(SYMPTOMS)
+  `You are coding a patient's free-text message into a fixed list of symptom codes. Each entry's ` +
+  `"code" field must be the exact short code string shown before the colon below (e.g. "thirst"), ` +
+  `never the description after it — the description is only there so you know what the code means. ` +
+  `Only use these codes, each with the severity (1 mild to 3 severe) the message implies: ` +
+  `${Object.entries(SYMPTOMS).map(([code, def]) => `"${code}": ${def.label}`).join("; ")}. ` +
+  `Set redFlag to true if the message describes any of: ${Object.entries(SYMPTOMS)
     .filter(([, def]) => "redFlag" in def)
     .map(([, def]) => def.label)
     .join(", ")}. If nothing in the message matches a code, return an empty codes array. ` +
@@ -197,7 +206,7 @@ export function buildClient(generate: GenerateJson): GeminiClient {
     extractLabs: (doc) =>
       extract(generate, LabExtractionSchema, LABS_PROMPT, [mediaPart(doc)]),
     codeSymptoms: (text) =>
-      extract(generate, SymptomCodingSchema, `${SYMPTOM_PROMPT}\n\nMessage: ${JSON.stringify(text)}`, []),
+      extract(generate, SymptomCodingSchema, `${SYMPTOM_PROMPT}\n\nMessage: ${JSON.stringify(text)}`, [], normalizeSymptomCoding),
     explainFlag: (flag) =>
       extract(generate, buildExplanationSchema(flag.sourceIds), explainFlagPrompt(flag), []),
     visitSummary: (input) =>
