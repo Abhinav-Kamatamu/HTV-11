@@ -21,9 +21,25 @@ T-042 through T-048 done. No open board tasks; this session did a human-requeste
   fetchAndCompute 105ms on the 25-patient seed — a real ~2.7x story, not the flat numbers an
   earlier Gotcha entry warned about, since T-012's batching fix landed since then). Left as-is
   pending their answer.
+- If extending the population-percentile idea (see Gotchas) to other metrics (eGFR for CKD, ALT/GGT
+  for MASLD), copy `loadBpSlopePercentile`'s shape in `patients/[id]/page.tsx` but gate-check it
+  against a second seed metric first — this seed's R² >= 0.5 gate only clears for 1-2 patients per
+  metric, so double check the comparison population isn't degenerate before trusting the number.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **BP trend percentile on `/patients/[id]` (commit `c676c2a`): gate the subject patient, never gate
+  the comparison population.** `loadBpSlopePercentile` batches `olsFitBatchSql` for `bp_systolic`
+  across every patient (one query, T-012's pattern) and ranks the subject's slope against everyone
+  else's with `engine/trends.ts`'s new `percentileRank`. First draft also applied `VITALS_GATE`
+  (n>=14, R²>=0.5) to the comparison population, not just the subject — in this seed almost nobody's
+  daily home BP clears R² >= 0.5 (most patients' BP is just noisy with no real trend), so the
+  population collapsed to size 1 and Walter Hughes (the one patient with a real rising trend) came
+  out at the 0th percentile instead of the 96th. Only the headline claim ("is this patient's own
+  trend confident enough to state a number") needs the gate; a flat or noisy slope is still a real
+  slope and belongs in the population being ranked against. This passed lint/tsc/tests fine — only
+  caught by actually running the query live and checking the number against what the Population scan
+  page already showed as the steepest riser.
 - **Re-added the sunset-glow `body::before` background and the translucent/blurred header
   (`border-border/60 bg-card/75 backdrop-blur-xl`) that a same-day earlier session added then
   reverted** (`862374e` blurred glow -> `d343ee3` removed it back to flat cream pages). Human
