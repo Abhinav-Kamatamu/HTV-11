@@ -18,6 +18,20 @@ T-082: done = `pitch/props/bp_monitor_141_88.png` and `sample_lab_report.pdf`. N
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **Cross-lane touch (clinician session, 2026-10-17, commit `abac566`), human-requested project
+  audit:** `pitch/DEMO_SCRIPT.md` beat 6 and `pitch/DEVPOST.md`'s care-team bullets were updated —
+  both still described the old plain `/benchmark` speed-check page ("1,000 patients... 33ms") from
+  before `/benchmark` was reworked into "Population scan" (live BP-trend + stopped-logging lists,
+  commit `2573765`) earlier the same day. Beat 6's script now describes the actual page. Also
+  updated the demo script's pre-show checklist numbers to match a timing fix landed the same
+  session (the speed check's full engine re-run was blocking ~11.6s to compute a median it only
+  ever showed once — see `relay/clinician.md` — now ~3.5s). **If anyone re-rehearses T-083 with a
+  human click-through (still not done, see below), re-check these numbers are still accurate and
+  the beat-6 line still matches whatever `/benchmark` looks like by then.**
+- The audit this came out of flagged (not yet acted on, your call): T-082 has no backup recording
+  yet, T-083 was never a full human click-through (API/curl-verified only), and the printed BP
+  prop has only been tested digitally, never print-and-rephotograph. These are the real remaining
+  podium-readiness risks, not anything code-side.
 - Docs-only update (2026-10-17, no task id): at the human's request, reworked how the project
   uses Vultr so the MLH prize fits instead of being forced. `docs/ARCHITECTURE.md`'s Hosting row
   and new "Vultr usage beyond hosting" section, `docs/PRIZES.md`'s Vultr/GoDaddy rows, and
