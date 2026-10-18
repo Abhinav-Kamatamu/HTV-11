@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { generateSeed } from "../db/seed/generate";
 import { STORY_IDS } from "../db/seed/ids";
-import { baselineZScore, crossingDays, fitAt, olsFit, slopePerYear, vitalsTrend } from "./trends";
+import { baselineZScore, crossingDays, fitAt, olsFit, percentileRank, slopePerYear, vitalsTrend } from "./trends";
 import { DAY_MS, type Pt } from "./types";
 
 const t0 = Date.UTC(2026, 6, 1);
@@ -112,6 +112,22 @@ describe("baselineZScore", () => {
     expect(baselineZScore(series(0).slice(55), now)).toBeNull();
     const flat = series(0).map((p) => ({ ...p, value: 120 }));
     expect(baselineZScore(flat, now)).toBeNull();
+  });
+});
+
+describe("percentileRank", () => {
+  it("is 0 for the smallest value and close to 1 for the largest", () => {
+    const pop = [1, 2, 3, 4, 5];
+    expect(percentileRank(pop, 1)).toBe(0);
+    expect(percentileRank(pop, 5)).toBe(0.8);
+  });
+
+  it("counts strictly-below, so a mid-pack value reflects how many it beats", () => {
+    expect(percentileRank([10, 20, 30, 40], 25)).toBe(0.5);
+  });
+
+  it("is null for an empty population, not a divide-by-zero NaN", () => {
+    expect(percentileRank([], 5)).toBeNull();
   });
 });
 

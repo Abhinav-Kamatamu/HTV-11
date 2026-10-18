@@ -83,6 +83,18 @@ export function vitalsTrend(points: Pt[], threshold: number): VitalsTrend | null
   };
 }
 
+/**
+ * Fraction of `population` strictly below `value`, e.g. "this patient's BP slope is steeper than 91%
+ * of the population" (Postgres `percent_rank()`'s definition for a value already in the set). Null
+ * population is treated as no context to show, not a crash. Contextual info only (CLAUDE.md §4: the
+ * risk engine's cited rules decide severity, this never feeds a flag's points).
+ */
+export function percentileRank(population: readonly number[], value: number): number | null {
+  if (population.length === 0) return null;
+  const below = population.filter((v) => v < value).length;
+  return below / population.length;
+}
+
 export type BaselineDeviation = { z: number; recentMean: number; baselineMean: number; baselineSd: number };
 
 /**

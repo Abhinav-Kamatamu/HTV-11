@@ -3,8 +3,12 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { ArrowLeft } from "lucide-react";
 import { getDb } from "@/db/client";
+import { patients } from "@/db/schema";
+import { olsFitBatchSql } from "@/db/vitals";
 import { getPatientSummary, loadPatientRecord } from "@/app/api/_lib/engine-db";
 import { evaluate } from "@/engine/evaluate";
+import { percentileRank, slopePerYear, VITALS_GATE, type OlsFit } from "@/engine/trends";
+import { DAY_MS } from "@/engine/types";
 import { buildLabCharts } from "./lab-charts";
 import { LabChart } from "./lab-chart";
 import { buildVitalsCharts } from "./vitals-charts";
@@ -50,10 +54,51 @@ function PatientSkeleton() {
   );
 }
 
+// Same 90-day window the Population scan page uses, so "steeper than N%" means the same thing in
+// both places. One batched query across every patient (T-012's pattern) rather than a second round
+// trip per patient — the population to rank against has to be fetched somehow, and a single
+// `stats_agg` query for everyone is the whole point of doing this in Tiger Data at all.
+//
+// The VITALS_GATE (n >= 14, R² >= 0.5) only applies to the SUBJECT patient — it decides whether
+// their own trend is confident enough to show a percentile for at all. It must NOT also filter who
+// counts as "the population": in this seed only 1-2 patients ever clear R² >= 0.5 on noisy daily BP,
+// so gating the comparison set too left Walter Hughes (the one patient with an actual rising trend)
+// compared against basically just himself and landing at the 0th percentile — caught by manually
+// checking the live numbers, not by lint/tsc/tests. Flat or noisy slopes are still real slopes and
+// belong in the comparison population; only the headline claim needs the gate.
+const BP_PERCENTILE_WINDOW_DAYS = 90;
+
+async function loadBpSlopePercentile(id: string): Promise<{ perYear: number; percentile: number } | null> {
+  const db = getDb();
+  const now = Date.now();
+  const all = await db.select({ id: patients.id }).from(patients);
+  const fits = await olsFitBatchSql(db, {
+    patientIds: all.map((p) => p.id),
+    metrics: ["bp_systolic"],
+    sinceMs: now - BP_PERCENTILE_WINDOW_DAYS * DAY_MS,
+  });
+  const population: number[] = [];
+  let mine: OlsFit | null = null;
+  for (const [patientId, byMetric] of fits) {
+    const fit = byMetric.get("bp_systolic");
+    if (!fit) continue;
+    population.push(slopePerYear(fit));
+    if (patientId === id) mine = fit;
+  }
+  if (!mine || mine.n < VITALS_GATE.minPoints || mine.r2 < VITALS_GATE.minR2) return null;
+  const perYear = slopePerYear(mine);
+  const percentile = percentileRank(population, perYear);
+  return percentile === null ? null : { perYear, percentile };
+}
+
 async function PatientContent({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   const { id } = await params;
-  const [summary, record] = await Promise.all([getPatientSummary(getDb(), id), loadPatientRecord(getDb(), id)]);
+  const [summary, record, bpPercentile] = await Promise.all([
+    getPatientSummary(getDb(), id),
+    loadPatientRecord(getDb(), id),
+    loadBpSlopePercentile(id),
+  ]);
   const evaluation = evaluate(record);
   const charts = buildLabCharts(summary.observations);
   const vitalsCharts = buildVitalsCharts(summary.observations, evaluation.silence);
@@ -130,6 +175,13 @@ async function PatientContent({ params }: { params: Promise<{ id: string }> }) {
                   <span className="text-xs text-muted-foreground">{series.unit}</span>
                 </div>
                 <VitalsChart series={series} />
+                {series.metric === "bp_systolic" && bpPercentile && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {bpPercentile.perYear >= 0 ? "Rising" : "Falling"} {Math.abs(bpPercentile.perYear).toFixed(1)} mmHg/year
+                    &mdash; steeper than {Math.round(bpPercentile.percentile * 100)}% of patients screened, last{" "}
+                    {BP_PERCENTILE_WINDOW_DAYS} days (population scan).
+                  </p>
+                )}
               </div>
             ))}
           </div>
