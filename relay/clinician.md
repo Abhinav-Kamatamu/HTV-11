@@ -31,6 +31,22 @@ T-042 through T-048 done. No open board tasks; this session did human-requested 
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **FIXED, demo-blocking (commit `4fd68ae`, human-found via "I can't see anything in clinician to
+  send a message"): Validate never actually sent a patient message.** `flag-card.tsx` had one
+  textarea labeled "Clinical note (optional)," POSTed only as the validate route's `note` field.
+  The route's separate `message` field — the one `createMessageForFlag` actually needs to create a
+  patient-facing message — was never sent from the UI at all. Validating set `status: "validated"`
+  and saved an internal note, but **no message was ever created**, silently, no error shown. This is
+  demo beat 3 ("I validate, and only now does the patient get a message"). Fixed by adding a second
+  textarea, pre-filled with a condition-specific default (`defaultMessage()`, SPEC §3's "optionally
+  edits a message" implies a draft exists, not a blank box) so Validate is one click for the demo's
+  actual dialogue. Smoke-tested live end to end on Daniel Okafor's `mets` flag, reverted after (same
+  convention as every other lane's smoke tests — see other Gotchas entries for the pattern).
+- **If re-rehearsing beat 3 (T-083 still needs a full human click-through, see `relay/pitch.md`),
+  budget an extra second to glance at the pre-filled message text before clicking Validate** — it's
+  now a real, editable draft, not empty, so the demo line can just be "I validate" without typing
+  anything live, or the speaker can edit it in place if they want the "live editing" beat to read as
+  more hands-on.
 - **`npm run demo:rehearse` (new, `scripts/demo-rehearsal.ts`, commit `8236d64`) times SPEC.md §6's
   6 demo beats against a running app** — narration budget (from the spec) tracked separately from
   actual technical latency, so a stall doesn't silently eat into the 3-minute slot. Read-only except
