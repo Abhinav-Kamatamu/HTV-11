@@ -52,24 +52,27 @@ PointClickCare framing: the clinician dashboard *is* the care-team tool. Optiona
 
 ## 4. MVP scope (must ship)
 
-- [ ] Fake login with role switcher (patient / clinician), no real auth
-- [ ] Clinician: patient list sorted by risk, severity filter
-- [ ] Clinician: patient detail with trend charts (labs over years, vitals over weeks, change-point
+All done as of 2026-10-17 — see `TASKS.md` for the task-by-task breakdown and `relay/*.md` for how
+each was verified.
+
+- [x] Fake login with role switcher (patient / clinician), no real auth
+- [x] Clinician: patient list sorted by risk, severity filter
+- [x] Clinician: patient detail with trend charts (labs over years, vitals over weeks, change-point
       markers), flags with points-ledger "why" panel and citations, validate / dismiss
-- [ ] Clinician: "stopped logging" badge in the queue
-- [ ] Patient: log meal photo, device photo, symptom chat, weekly sleep check-in, see own timeline and messages
-- [ ] Gemini extraction for meal photo, device photo, lab PDF (including lipids), symptom text
-- [ ] Engine: HbA1c/FPG trend + projection (Mann-Kendall + Sen's slope), eGFR decline + ACR, home BP
+- [x] Clinician: "stopped logging" badge in the queue
+- [x] Patient: log meal photo, device photo, symptom chat, weekly sleep check-in, see own timeline and messages
+- [x] Gemini extraction for meal photo, device photo, lab PDF (including lipids), symptom text
+- [x] Engine: HbA1c/FPG trend + projection (Mann-Kendall + Sen's slope), eGFR decline + ACR, home BP
       average, FIB-4, CANRISK, symptom clusters, CUSUM change-points, metabolic syndrome (3 of 5),
       STOP-Bang, points ledger
-- [ ] Tiger Data does the vitals math: `stats_agg` slopes, R² and crossing dates in continuous
+- [x] Tiger Data does the vitals math: `stats_agg` slopes, R² and crossing dates in continuous
       aggregates, `heartbeat_agg` for silent patients
-- [ ] Synthetic dataset: ~25 patients, controls with 3 to 5 yearly lab points, the three story patients with
+- [x] Synthetic dataset: ~25 patients, controls with 3 to 5 yearly lab points, the three story patients with
       six twice-yearly lab draws over ~2.5 years (Patient A's HbA1c runs 4.65 to 5.4), 90 days of daily
       data, weekly sleep check-ins, and 3 story patients (§6)
-- [ ] Scale-mode seed (1,000 patients) and a `/benchmark` page that measures the Tiger Data path
-      against the alternatives. The demo itself stays on the 25-patient dataset
-- [ ] Deployed at a public URL
+- [x] Scale-mode seed (1,000 patients) and a `/benchmark` ("Population scan") page that measures the
+      Tiger Data path against the alternatives. The demo itself stays on the 25-patient dataset
+- [x] Deployed at a public URL (`https://cleanbillof.health`, Vultr Toronto)
 
 ## 5. Out of scope (decided, see docs/DECISIONS.md)
 

@@ -14,7 +14,9 @@ A patient has six HbA1c results over three years: 4.65, 4.8, 4.95, 5.1, 5.25, 5.
 ### For the care team
 - Patients are ranked by risk trajectory, with a "stopped logging" badge.
 - Each flag has a points ledger: every signal, its points, its reading and a guideline citation.
-- Lab charts show projected threshold dates, and BP charts mark where a shift began.
+- Lab charts show projected threshold dates, and BP charts mark where a shift began, with a note on
+  how a patient's own trend compares to the rest of the panel.
+- Population scan checks every patient's trend and who's gone quiet at once, live, not per-chart.
 - Metabolic syndrome appears as "3 of 5 criteria, 2 unknown".
 - A clinician validates or dismisses every flag. The AI never messages a patient on its own.
 
