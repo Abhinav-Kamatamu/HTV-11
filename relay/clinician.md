@@ -31,6 +31,17 @@ T-042 through T-048 done. No open board tasks; this session did human-requested 
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
+- **FIXED, cross-lane (commit `4a82fb3`, engine-owned `src/engine/flags.ts`, human-found live on the
+  real queue): `rankPatients`'s gap-only rule buried the one silent patient below every healthy
+  patient.** `isGapOnly` compared pairwise as a plain boolean; a 0-flag patient also reads
+  `isGapOnly=false` (same as a clinical-flag patient), so the old `gapA !== gapB` check put gap-only
+  below BOTH clinical-flag and zero-flag patients instead of just below clinical ones. Rosa Delgado
+  (the seed's "stopped logging" patient — a Tiger Data `heartbeat_agg` feature the product explicitly
+  highlights) ranked dead last, position 25 of 25, below all 20 flagless controls — invisible to a
+  clinician working the queue top-down. Replaced with an explicit 3-tier `priorityTier` (clinical
+  flag / gap-only / no flags). New regression test in `flags.test.ts` covers the exact missing case
+  (gap-only vs. a true empty flags array — the existing tests only ever compared gap-only against a
+  clinical flag or another gap-only patient).
 - **FIXED, cross-lane (commit `e2255dc`, core-owned `src/app/api/_lib/engine-db.ts`, human-found on
   Walter Hughes's real patient page): `getPatientSummary`'s flags were ordered by `createdAt desc`,
   not severity or points** — whichever condition the engine's upsert loop happened to touch last on
