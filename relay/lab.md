@@ -4,9 +4,10 @@
      Keep sections short. Newest log entry on top. -->
 
 ## Status
-New stretch lane, 2026-10-17, for the Papiers.ai autoresearch challenge (docs/PRIZES.md "Maybe").
-Tasks T-090 to T-093 added to TASKS.md, all `todo`, all gated: do not start before the main demo
-flow (SPEC §6) works end-to-end. No code written yet.
+**DROPPED, 2026-10-17 (team decision, human request).** T-090 to T-093 marked `dropped` in
+TASKS.md. Not enough time left before judging to safely start a gated stretch lane on top of
+unfinished demo-rehearsal work (T-082/T-083) — see docs/DECISIONS.md. No code was ever written for
+this lane, so nothing to revert; `src/app/(clinician)/lab` was never created.
 
 ## In flight
 <!-- Task ID + 2-4 line plan, written BEFORE starting. Clear it when the task is done. -->
@@ -14,13 +15,9 @@ flow (SPEC §6) works end-to-end. No code written yet.
 
 ## Next up
 <!-- The next 1-3 concrete steps, specific enough to start without asking anyone. -->
-- Before claiming T-090: confirm the main demo flow is actually rehearsed/working (check T-083 and
-  relay/pitch.md) — this whole lane waits on that, per the team's "demo first" rule (CLAUDE.md §4).
-- T-090: hidden ground-truth labels + cutoff-date cohort view on top of the `--scale` seed (T-009,
-  core-owned generator). Decide label definition precisely (which metric/threshold, "within N
-  months" — pick N) and record it in docs/DECISIONS.md before building.
-- T-091: evaluation harness scoring a config against T-090's labels (sensitivity, false-alarm rate,
-  median lead time, flags/100). This is the piece T-092's agent loop calls on every iteration.
+None. Do not pick up this lane — it's dropped, not just gated. If time frees up unexpectedly after
+the demo is fully rehearsed and recorded, re-open by reverting the `dropped` status in TASKS.md and
+re-reading this file's original plan below first.
 
 ## Gotchas
 <!-- Things the next session would otherwise waste time rediscovering. -->
